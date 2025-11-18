@@ -1,0 +1,246 @@
+# CareLink Database Schema Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         CARELINK DATABASE SCHEMA                        │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────┐
+│      auth.users              │  (Supabase Auth - Built-in)
+│──────────────────────────────│
+│ id (UUID) PK                 │
+│ email                        │
+│ encrypted_password           │
+│ created_at                   │
+└──────────────────────────────┘
+            │
+            │ (1:1 relationship)
+            ▼
+┌──────────────────────────────┐
+│        profiles              │  User Information
+│──────────────────────────────│
+│ id (UUID) PK, FK             │───┐
+│ role (Patient/Doctor/Staff)  │   │
+│ first_name                   │   │
+│ last_name                    │   │
+│ email (unique)               │   │
+│ phone                        │   │
+│ specialty (for doctors)      │   │
+│ created_at                   │   │
+│ updated_at                   │   │
+└──────────────────────────────┘   │
+            │                      │
+            │ (1:Many - Doctor)    │ (1:Many - Patient)
+            ▼                      │
+┌──────────────────────────────┐   │
+│     available_slots          │   │  Doctor's Time Slots
+│──────────────────────────────│   │
+│ id (UUID) PK                 │   │
+│ doctor_id (UUID) FK          │◄──┘
+│ date                         │
+│ time                         │
+│ duration (minutes)           │
+│ is_booked (boolean)          │
+│ notes                        │
+│ created_at                   │
+│ updated_at                   │
+│ UNIQUE(doctor_id, date, time)│
+└──────────────────────────────┘
+            │
+            │ (1:Many)
+            ▼
+┌──────────────────────────────┐
+│       appointments           │  Appointment Bookings
+│──────────────────────────────│
+│ id (UUID) PK                 │
+│ patient_id (UUID) FK         │◄─────────┐
+│ slot_id (UUID) FK            │          │
+│ status (pending/confirmed/   │          │
+│         cancelled/completed) │          │
+│ notes (from doctor)          │          │
+│ created_at                   │          │
+│ updated_at                   │          │
+│ UNIQUE(slot_id, status)      │          │
+└──────────────────────────────┘          │
+                                          │
+                                          │
+                    ┌─────────────────────┘
+                    │
+         ┌──────────▼──────────┐
+         │      profiles       │
+         │  (Patient record)   │
+         └─────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════
+                              RELATIONSHIPS
+═══════════════════════════════════════════════════════════════════════════
+
+1. auth.users (1) ──────── (1) profiles
+   - Every authenticated user has one profile
+
+2. profiles (1 Doctor) ─── (Many) available_slots
+   - One doctor can create many time slots
+
+3. available_slots (1) ─── (Many) appointments
+   - One slot can have multiple appointments (but only 1 active)
+
+4. profiles (1 Patient) ── (Many) appointments
+   - One patient can book many appointments
+
+
+═══════════════════════════════════════════════════════════════════════════
+                           DATA FLOW EXAMPLE
+═══════════════════════════════════════════════════════════════════════════
+
+SCENARIO: Patient books an appointment
+
+1. User registers → Record created in auth.users
+                 → Record created in profiles (role: Patient)
+
+2. Doctor creates time slot → Record created in available_slots
+                            → is_booked = false
+
+3. Patient books appointment → Record created in appointments
+                             → status = 'pending'
+                             → available_slots.is_booked = true (automatic)
+
+4. Doctor confirms → appointments.status = 'confirmed'
+                   → appointments.notes = "Doctor's instructions"
+
+5. Patient cancels → appointments.status = 'cancelled'
+                   → available_slots.is_booked = false (automatic)
+
+
+═══════════════════════════════════════════════════════════════════════════
+                         AUTOMATIC TRIGGERS
+═══════════════════════════════════════════════════════════════════════════
+
+Trigger 1: update_updated_at_column()
+  - Fires on UPDATE of any table
+  - Automatically sets updated_at = NOW()
+
+Trigger 2: update_slot_booking_status()
+  - Fires on INSERT/UPDATE/DELETE of appointments
+  - Automatically manages available_slots.is_booked status
+  
+  Actions:
+  ├─ INSERT appointment (status: pending/confirmed)
+  │  └─> Set slot.is_booked = TRUE
+  │
+  ├─ UPDATE appointment to cancelled
+  │  └─> Set slot.is_booked = FALSE
+  │
+  └─ DELETE appointment
+     └─> Set slot.is_booked = FALSE
+
+
+═══════════════════════════════════════════════════════════════════════════
+                          ROW LEVEL SECURITY
+═══════════════════════════════════════════════════════════════════════════
+
+profiles table:
+  ✓ SELECT: Everyone can view
+  ✓ INSERT: User can create own profile
+  ✓ UPDATE: User can update own profile
+
+available_slots table:
+  ✓ SELECT: Everyone can view
+  ✓ INSERT: Only doctors can create own slots
+  ✓ UPDATE: Only doctors can update own slots
+  ✓ DELETE: Only doctors can delete own slots
+
+appointments table:
+  ✓ SELECT: Patient sees own appointments
+           Doctor sees appointments for their slots
+  ✓ INSERT: Only patients can create appointments
+  ✓ UPDATE: Patient can update own appointments
+           Doctor can update appointments for their slots
+  ✓ DELETE: Patient can delete own cancelled appointments
+
+
+═══════════════════════════════════════════════════════════════════════════
+                            INDEXES (Performance)
+═══════════════════════════════════════════════════════════════════════════
+
+profiles:
+  - idx_profiles_role (role)
+  - idx_profiles_email (email)
+
+available_slots:
+  - idx_slots_doctor_id (doctor_id)
+  - idx_slots_date (date)
+  - idx_slots_is_booked (is_booked)
+  - idx_slots_doctor_date (doctor_id, date) [composite]
+
+appointments:
+  - idx_appointments_patient_id (patient_id)
+  - idx_appointments_slot_id (slot_id)
+  - idx_appointments_status (status)
+
+
+═══════════════════════════════════════════════════════════════════════════
+                         CONSTRAINTS & VALIDATIONS
+═══════════════════════════════════════════════════════════════════════════
+
+profiles:
+  ✓ role must be 'Patient', 'Doctor', or 'Staff'
+  ✓ email must be unique
+
+available_slots:
+  ✓ Unique combination of (doctor_id, date, time)
+  ✓ Cannot create duplicate slots
+
+appointments:
+  ✓ status must be 'pending', 'confirmed', 'cancelled', or 'completed'
+  ✓ Unique combination of (slot_id, status) when status is active
+
+
+═══════════════════════════════════════════════════════════════════════════
+                              SAMPLE QUERIES
+═══════════════════════════════════════════════════════════════════════════
+
+-- Get all available doctors with their specialties
+SELECT id, first_name, last_name, specialty
+FROM profiles
+WHERE role = 'Doctor'
+ORDER BY last_name;
+
+-- Get all available slots for a specific doctor
+SELECT date, time, duration, is_booked
+FROM available_slots
+WHERE doctor_id = 'doctor-uuid-here'
+  AND date >= CURRENT_DATE
+  AND is_booked = false
+ORDER BY date, time;
+
+-- Get patient's upcoming appointments
+SELECT 
+  a.id,
+  a.status,
+  s.date,
+  s.time,
+  p.first_name || ' ' || p.last_name AS doctor_name
+FROM appointments a
+JOIN available_slots s ON a.slot_id = s.id
+JOIN profiles p ON s.doctor_id = p.id
+WHERE a.patient_id = 'patient-uuid-here'
+  AND s.date >= CURRENT_DATE
+ORDER BY s.date, s.time;
+
+-- Get doctor's appointments for today
+SELECT 
+  a.id,
+  a.status,
+  s.time,
+  p.first_name || ' ' || p.last_name AS patient_name
+FROM appointments a
+JOIN available_slots s ON a.slot_id = s.id
+JOIN profiles p ON a.patient_id = p.id
+WHERE s.doctor_id = 'doctor-uuid-here'
+  AND s.date = CURRENT_DATE
+  AND a.status IN ('pending', 'confirmed')
+ORDER BY s.time;
+
+
+═══════════════════════════════════════════════════════════════════════════
