@@ -15,18 +15,18 @@ const successMessage = ref('')
 const errorDetails = ref('')
 
 const roles = [
-  { 
-    title: 'Patient', 
-    icon: 'mdi-account-heart', 
+  {
+    title: 'Patient',
+    icon: 'mdi-account-heart',
     color: 'primary',
-    description: 'Register as a patient to book appointments'
+    description: 'Register as a patient to book appointments',
   },
-  { 
-    title: 'Doctor', 
-    icon: 'mdi-doctor', 
+  {
+    title: 'Doctor',
+    icon: 'mdi-doctor',
     color: 'success',
-    description: 'Register as a healthcare provider'
-  }
+    description: 'Register as a healthcare provider',
+  },
 ]
 
 const form = ref({
@@ -38,7 +38,7 @@ const form = ref({
   phone: '',
   password: '',
   confirmPassword: '',
-  specialty: ''
+  specialty: '',
 })
 
 const specialties = [
@@ -49,25 +49,26 @@ const specialties = [
   'Dermatology',
   'Orthopedics',
   'Psychiatry',
-  'Family Medicine'
+  'Family Medicine',
 ]
 
 const rules = {
-  required: v => !!v || 'This field is required',
-  email: v => /.+@.+\..+/.test(v) || 'Please enter a valid email',
-  phone: v => /^\d{10}$/.test(v) || 'Please enter a valid 10-digit phone number',
-  password: v => v.length >= 6 || 'Password must be at least 6 characters',
-  passwordMatch: v => v === form.value.password || 'Passwords do not match',
+  required: (v) => !!v || 'This field is required',
+  email: (v) => /.+@.+\..+/.test(v) || 'Please enter a valid email',
+  phone: (v) => /^\d{10}$/.test(v) || 'Please enter a valid 10-digit phone number',
+  password: (v) => v.length >= 6 || 'Password must be at least 6 characters',
+  passwordMatch: (v) => v === form.value.password || 'Passwords do not match',
 }
 
 const isFormValid = computed(() => {
-  const baseValidation = form.value.role &&
-         form.value.firstName &&
-         form.value.lastName &&
-         form.value.email &&
-         form.value.password &&
-         form.value.confirmPassword === form.value.password &&
-         form.value.email.includes('@')
+  const baseValidation =
+    form.value.role &&
+    form.value.firstName &&
+    form.value.lastName &&
+    form.value.email &&
+    form.value.password &&
+    form.value.confirmPassword === form.value.password &&
+    form.value.email.includes('@')
 
   if (form.value.role === 'Doctor') {
     return baseValidation && form.value.specialty
@@ -95,33 +96,30 @@ async function handleRegister() {
       throw new Error('This email is already registered')
     }
 
-    const { data: { user }, error: signUpError } = await supabase.auth.signUp({
+    const {
+      data: { user },
+      error: signUpError,
+    } = await supabase.auth.signUp({
       email: form.value.email,
       password: form.value.password,
+      options: {
+        data: {
+          role: form.value.role,
+          first_name: form.value.firstName,
+          last_name: form.value.lastName,
+          phone: form.value.phone || null,
+          specialty: form.value.role === 'Doctor' ? form.value.specialty : null,
+        },
+      },
     })
 
     if (signUpError) throw signUpError
 
-    const profileData = {
-      id: user.id,
-      role: form.value.role,
-      first_name: form.value.firstName,
-      last_name: form.value.lastName,
-      email: form.value.email,
-      created_at: new Date().toISOString()
-    }
+    if (!user) throw new Error('User creation failed')
 
-    if (form.value.role === 'Doctor') {
-      profileData.specialty = form.value.specialty
-    }
+    // Profile will be automatically created by database trigger
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert(profileData)
-
-    if (profileError) throw profileError
-
-    successMessage.value = 'Registration successful! Please check your email for verification.'
+    successMessage.value = 'Registration successful! You can now log in.'
     showSuccessDialog.value = true
 
     form.value = {
@@ -133,13 +131,12 @@ async function handleRegister() {
       phone: '',
       password: '',
       confirmPassword: '',
-      specialty: ''
+      specialty: '',
     }
 
     setTimeout(() => {
-    router.push('/login')
+      router.push('/login')
     }, 3000)
-
   } catch (e) {
     errorDetails.value = e.message
     showErrorDialog.value = true
@@ -152,8 +149,8 @@ async function handleRegister() {
 <template>
   <v-app>
     <div class="background-pattern"></div>
-  <AppLayout>
-    <template #content>
+    <AppLayout>
+      <template #content>
         <v-container fluid class="fill-height pa-0">
           <v-row class="fill-height ma-0" align="center" justify="center">
             <!-- Left Side: Welcome Section -->
@@ -163,22 +160,17 @@ async function handleRegister() {
                   <v-icon size="64" color="primary" class="logo-icon">mdi-hospital-building</v-icon>
                   <div class="logo-text">CareLink</div>
                 </div>
-                <h1 class="welcome-title text-h3 font-weight-bold mb-4">
-                  Join CareLink Today
-                </h1>
+                <h1 class="welcome-title text-h3 font-weight-bold mb-4">Join CareLink Today</h1>
                 <p class="welcome-subtitle text-h6 text-medium-emphasis mb-8">
                   Create your account to access our healthcare services
                 </p>
-                <v-sheet
-                  class="features-grid mx-auto"
-                  max-width="600"
-                  rounded="lg"
-                  elevation="0"
-                >
+                <v-sheet class="features-grid mx-auto" max-width="600" rounded="lg" elevation="0">
                   <div class="feature-item">
                     <v-icon color="success" size="32" class="mb-2">mdi-account-check</v-icon>
                     <h3 class="text-h6 mb-1">Easy Registration</h3>
-                    <p class="text-body-2 text-medium-emphasis">Quick and simple account creation</p>
+                    <p class="text-body-2 text-medium-emphasis">
+                      Quick and simple account creation
+                    </p>
                   </div>
                   <div class="feature-item">
                     <v-icon color="info" size="32" class="mb-2">mdi-shield-check</v-icon>
@@ -212,16 +204,16 @@ async function handleRegister() {
                   <h2 class="text-h4 font-weight-bold text-center mb-6">Create Account</h2>
 
                   <v-form @submit.prevent="handleRegister" class="register-form">
-                <v-alert
-                  v-if="error"
-                  type="error"
+                    <v-alert
+                      v-if="error"
+                      type="error"
                       variant="tonal"
                       closable
-                  class="mb-4"
-                  @click:close="error = null"
-                >
-                  {{ error }}
-                </v-alert>
+                      class="mb-4"
+                      @click:close="error = null"
+                    >
+                      {{ error }}
+                    </v-alert>
 
                     <!-- Role Selection -->
                     <div class="role-selection mb-6">
@@ -230,34 +222,35 @@ async function handleRegister() {
                         <v-card
                           v-for="role in roles"
                           :key="role.title"
-                          :class="['role-card', { 'selected': form.role === role.title }]"
+                          :class="['role-card', { selected: form.role === role.title }]"
                           @click="form.role = role.title"
                           elevation="2"
                         >
-                          <v-icon :color="role.color" size="32" class="mb-2">{{ role.icon }}</v-icon>
+                          <v-icon :color="role.color" size="32" class="mb-2">{{
+                            role.icon
+                          }}</v-icon>
                           <div class="text-h6 mb-1">{{ role.title }}</div>
-                          <div class="text-caption text-medium-emphasis">{{ role.description }}</div>
+                          <div class="text-caption text-medium-emphasis">
+                            {{ role.description }}
+                          </div>
                         </v-card>
                       </div>
                     </div>
 
                     <v-expand-transition>
-                <v-select
+                      <v-select
                         v-if="form.role === 'Doctor'"
                         v-model="form.specialty"
                         :items="specialties"
                         label="Select Specialty"
-                  variant="outlined"
-                  :rules="[rules.required]"
+                        variant="outlined"
+                        :rules="[rules.required]"
                         prepend-inner-icon="mdi-stethoscope"
                         class="mb-4"
-                  required
+                        required
                       >
                         <template v-slot:prepend>
-                          <v-tooltip
-                            text="Choose your medical specialty"
-                            location="bottom"
-                          >
+                          <v-tooltip text="Choose your medical specialty" location="bottom">
                             <template v-slot:activator="{ props }">
                               <v-icon
                                 v-bind="props"
@@ -273,104 +266,102 @@ async function handleRegister() {
 
                     <v-row>
                       <!-- ID Number -->
-                      <v-col cols="12">
-              
-                      </v-col>
+                      <v-col cols="12"> </v-col>
 
                       <!-- First Name -->
                       <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="form.firstName"
-                  label="First Name"
-                  variant="outlined"
-                  :rules="[rules.required]"
+                        <v-text-field
+                          v-model="form.firstName"
+                          label="First Name"
+                          variant="outlined"
+                          :rules="[rules.required]"
                           prepend-inner-icon="mdi-account"
-                  required
-                ></v-text-field>
+                          required
+                        ></v-text-field>
                       </v-col>
 
                       <!-- Last Name -->
                       <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="form.lastName"
-                  label="Last Name"
-                  variant="outlined"
-                  :rules="[rules.required]"
+                        <v-text-field
+                          v-model="form.lastName"
+                          label="Last Name"
+                          variant="outlined"
+                          :rules="[rules.required]"
                           prepend-inner-icon="mdi-account"
-                  required
-                ></v-text-field>
+                          required
+                        ></v-text-field>
                       </v-col>
 
                       <!-- Email -->
                       <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="form.email"
-                  label="Email"
+                        <v-text-field
+                          v-model="form.email"
+                          label="Email"
                           type="email"
-                  variant="outlined"
-                  :rules="[rules.required, rules.email]"
+                          variant="outlined"
+                          :rules="[rules.required, rules.email]"
                           prepend-inner-icon="mdi-email"
-                  required
-                ></v-text-field>
+                          required
+                        ></v-text-field>
                       </v-col>
 
                       <!-- Phone -->
                       <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="form.phone"
-                  label="Phone Number"
-                  variant="outlined"
-                  :rules="[rules.required, rules.phone]"
+                        <v-text-field
+                          v-model="form.phone"
+                          label="Phone Number"
+                          variant="outlined"
+                          :rules="[rules.required, rules.phone]"
                           prepend-inner-icon="mdi-phone"
-                  required
-                ></v-text-field>
+                          required
+                        ></v-text-field>
                       </v-col>
 
                       <!-- Password -->
                       <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="form.password"
-                  label="Password"
+                        <v-text-field
+                          v-model="form.password"
+                          label="Password"
                           :type="showPassword ? 'text' : 'password'"
-                  variant="outlined"
-                  :rules="[rules.required, rules.password]"
+                          variant="outlined"
+                          :rules="[rules.required, rules.password]"
                           prepend-inner-icon="mdi-lock"
                           :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
                           @click:append-inner="showPassword = !showPassword"
-                  required
-                ></v-text-field>
+                          required
+                        ></v-text-field>
                       </v-col>
 
                       <!-- Confirm Password -->
                       <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="form.confirmPassword"
-                  label="Confirm Password"
+                        <v-text-field
+                          v-model="form.confirmPassword"
+                          label="Confirm Password"
                           :type="showConfirmPassword ? 'text' : 'password'"
-                  variant="outlined"
-                  :rules="[rules.required, rules.passwordMatch]"
+                          variant="outlined"
+                          :rules="[rules.required, rules.passwordMatch]"
                           prepend-inner-icon="mdi-lock-check"
                           :append-inner-icon="showConfirmPassword ? 'mdi-eye-off' : 'mdi-eye'"
                           @click:append-inner="showConfirmPassword = !showConfirmPassword"
-                  required
-                ></v-text-field>
+                          required
+                        ></v-text-field>
                       </v-col>
                     </v-row>
 
                     <!-- Register Button -->
-                <v-btn
-                  type="submit"
+                    <v-btn
+                      type="submit"
                       color="primary"
                       size="large"
-                  block
-                  :loading="loading"
+                      block
+                      :loading="loading"
                       :disabled="!isFormValid"
                       class="mt-4 register-btn"
                       elevation="2"
-                >
+                    >
                       <v-icon left class="mr-2">mdi-account-plus</v-icon>
                       Create Account
-                </v-btn>
+                    </v-btn>
 
                     <!-- Login Link -->
                     <div class="text-center mt-6">
@@ -379,14 +370,14 @@ async function handleRegister() {
                         Login here
                       </router-link>
                     </div>
-              </v-form>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
+                  </v-form>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
         </v-container>
-    </template>
-  </AppLayout>
+      </template>
+    </AppLayout>
 
     <!-- Success Dialog -->
     <v-dialog v-model="showSuccessDialog" max-width="400" persistent>
@@ -398,11 +389,7 @@ async function handleRegister() {
           </div>
           <p class="text-body-1 text-center mb-4">{{ successMessage }}</p>
           <div class="text-center">
-            <v-progress-circular
-              indeterminate
-              color="primary"
-              class="mb-2"
-            ></v-progress-circular>
+            <v-progress-circular indeterminate color="primary" class="mb-2"></v-progress-circular>
             <p class="text-caption">Redirecting to login page...</p>
           </div>
         </v-card-text>
@@ -418,12 +405,7 @@ async function handleRegister() {
             <h3 class="text-h5 font-weight-bold error-title">Registration Failed</h3>
           </div>
           <p class="text-body-1 text-center mb-4">{{ errorDetails }}</p>
-          <v-btn
-            color="error"
-            block
-            @click="showErrorDialog = false"
-            variant="tonal"
-          >
+          <v-btn color="error" block @click="showErrorDialog = false" variant="tonal">
             Close
           </v-btn>
         </v-card-text>
@@ -441,9 +423,12 @@ async function handleRegister() {
   width: 100%;
   height: 100%;
   background-color: #f5f5f5;
-  background-image: radial-gradient(#1976d2 0.5px, transparent 0.5px), radial-gradient(#1976d2 0.5px, #f5f5f5 0.5px);
+  background-image: radial-gradient(#1976d2 0.5px, transparent 0.5px),
+    radial-gradient(#1976d2 0.5px, #f5f5f5 0.5px);
   background-size: 20px 20px;
-  background-position: 0 0, 10px 10px;
+  background-position:
+    0 0,
+    10px 10px;
   opacity: 0.1;
   z-index: 0;
 }
@@ -504,7 +489,9 @@ async function handleRegister() {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .feature-item:hover {
@@ -702,8 +689,9 @@ async function handleRegister() {
 /* Dialog Animation */
 .v-dialog-transition-enter-active,
 .v-dialog-transition-leave-active {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .v-dialog-transition-enter-from,
@@ -714,7 +702,9 @@ async function handleRegister() {
 
 /* Progress Animation */
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .v-progress-circular {
