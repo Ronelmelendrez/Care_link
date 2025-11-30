@@ -12,26 +12,35 @@ const showPassword = ref(false)
 const form = ref({
   email: '',
   password: '',
-  role: ''
+  role: '',
 })
 
 const roles = [
-  { title: 'Patient', icon: 'mdi-account-heart', color: 'primary', description: 'Book and manage your appointments' },
-  { title: 'Doctor', icon: 'mdi-doctor', color: 'success', description: 'Manage your schedule and patients' }
+  {
+    title: 'Patient',
+    icon: 'mdi-account-heart',
+    color: 'primary',
+    description: 'Book and manage your appointments',
+  },
+  {
+    title: 'Doctor',
+    icon: 'mdi-doctor',
+    color: 'success',
+    description: 'Manage your schedule and patients',
+  },
 ]
 
 const isFormValid = computed(() => {
-  return form.value.email && 
-         form.value.password && 
-         form.value.role &&
-         form.value.email.includes('@')
+  return (
+    form.value.email && form.value.password && form.value.role && form.value.email.includes('@')
+  )
 })
 
 async function handleLogin() {
   try {
     loading.value = true
     error.value = null
-    
+
     const { data, error: authError } = await supabase.auth.signInWithPassword({
       email: form.value.email,
       password: form.value.password,
@@ -78,37 +87,38 @@ async function handleLogin() {
                   <v-icon size="64" color="primary" class="logo-icon">mdi-hospital-building</v-icon>
                   <div class="logo-text">CareLink</div>
                 </div>
-                <h1 class="welcome-title text-h3 font-weight-bold mb-4">
-                  Welcome to CareLink
-                </h1>
+                <h1 class="welcome-title text-h3 font-weight-bold mb-4">Welcome to CareLink</h1>
                 <p class="welcome-subtitle text-h6 text-medium-emphasis mb-8">
                   Your trusted University Clinic Appointment System
                 </p>
-                <v-sheet
-                  class="features-grid mx-auto"
-                  max-width="600"
-                  rounded="lg"
-                  elevation="0"
-                >
+                <v-sheet class="features-grid mx-auto" max-width="600" rounded="lg" elevation="0">
                   <div class="feature-item">
                     <v-icon color="primary" size="32" class="mb-2">mdi-calendar-check</v-icon>
                     <h3 class="text-h6 mb-1">Easy Scheduling</h3>
-                    <p class="text-body-2 text-medium-emphasis">Book appointments with just a few clicks</p>
+                    <p class="text-body-2 text-medium-emphasis">
+                      Book appointments with just a few clicks
+                    </p>
                   </div>
                   <div class="feature-item">
                     <v-icon color="success" size="32" class="mb-2">mdi-doctor</v-icon>
                     <h3 class="text-h6 mb-1">Expert Care</h3>
-                    <p class="text-body-2 text-medium-emphasis">Connect with qualified healthcare professionals</p>
+                    <p class="text-body-2 text-medium-emphasis">
+                      Connect with qualified healthcare professionals
+                    </p>
                   </div>
                   <div class="feature-item">
                     <v-icon color="info" size="32" class="mb-2">mdi-clock-fast</v-icon>
                     <h3 class="text-h6 mb-1">Real-time Updates</h3>
-                    <p class="text-body-2 text-medium-emphasis">Get instant notifications about your appointments</p>
+                    <p class="text-body-2 text-medium-emphasis">
+                      Get instant notifications about your appointments
+                    </p>
                   </div>
                   <div class="feature-item">
                     <v-icon color="warning" size="32" class="mb-2">mdi-shield-check</v-icon>
                     <h3 class="text-h6 mb-1">Secure Platform</h3>
-                    <p class="text-body-2 text-medium-emphasis">Your health data is protected and private</p>
+                    <p class="text-body-2 text-medium-emphasis">
+                      Your health data is protected and private
+                    </p>
                   </div>
                 </v-sheet>
               </div>
@@ -145,13 +155,17 @@ async function handleLogin() {
                         <v-card
                           v-for="role in roles"
                           :key="role.title"
-                          :class="['role-card', { 'selected': form.role === role.title }]"
+                          :class="['role-card', { selected: form.role === role.title }]"
                           @click="form.role = role.title"
                           elevation="2"
                         >
-                          <v-icon :color="role.color" size="32" class="mb-2">{{ role.icon }}</v-icon>
+                          <v-icon :color="role.color" size="32" class="mb-2">{{
+                            role.icon
+                          }}</v-icon>
                           <div class="text-h6 mb-1">{{ role.title }}</div>
-                          <div class="text-caption text-medium-emphasis">{{ role.description }}</div>
+                          <div class="text-caption text-medium-emphasis">
+                            {{ role.description }}
+                          </div>
                         </v-card>
                       </div>
                     </div>
@@ -162,7 +176,10 @@ async function handleLogin() {
                       label="Email"
                       type="email"
                       variant="outlined"
-                      :rules="[v => !!v || 'Email is required', v => /.+@.+\..+/.test(v) || 'Invalid email']"
+                      :rules="[
+                        (v) => !!v || 'Email is required',
+                        (v) => /.+@.+\..+/.test(v) || 'Invalid email',
+                      ]"
                       prepend-inner-icon="mdi-email"
                       class="mb-4"
                       required
@@ -174,7 +191,7 @@ async function handleLogin() {
                       label="Password"
                       :type="showPassword ? 'text' : 'password'"
                       variant="outlined"
-                      :rules="[v => !!v || 'Password is required']"
+                      :rules="[(v) => !!v || 'Password is required']"
                       prepend-inner-icon="mdi-lock"
                       :append-inner-icon="showPassword ? 'mdi-eye-off' : 'mdi-eye'"
                       @click:append-inner="showPassword = !showPassword"
@@ -224,9 +241,12 @@ async function handleLogin() {
   width: 100%;
   height: 100%;
   background-color: #f5f5f5;
-  background-image: radial-gradient(#1976d2 0.5px, transparent 0.5px), radial-gradient(#1976d2 0.5px, #f5f5f5 0.5px);
+  background-image: radial-gradient(#1976d2 0.5px, transparent 0.5px),
+    radial-gradient(#1976d2 0.5px, #f5f5f5 0.5px);
   background-size: 20px 20px;
-  background-position: 0 0, 10px 10px;
+  background-position:
+    0 0,
+    10px 10px;
   opacity: 0.1;
   z-index: 0;
 }
@@ -248,6 +268,7 @@ async function handleLogin() {
   font-weight: bold;
   background: linear-gradient(45deg, #1976d2, #42a5f5);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   margin-top: 0.5rem;
 }
@@ -285,7 +306,9 @@ async function handleLogin() {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .feature-item:hover {
@@ -435,9 +458,18 @@ async function handleLogin() {
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-5px); }
-  40%, 80% { transform: translateX(5px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-5px);
+  }
+  40%,
+  80% {
+    transform: translateX(5px);
+  }
 }
 
 /* Improve form field focus states */
