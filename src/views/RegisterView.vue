@@ -117,7 +117,18 @@ async function handleRegister() {
 
     if (!user) throw new Error('User creation failed')
 
-    // Profile will be automatically created by database trigger
+    // Create profile row in the database
+    const { error: profileError } = await supabase.from('profiles').insert({
+      id: user.id,
+      role: form.value.role,
+      first_name: form.value.firstName,
+      last_name: form.value.lastName,
+      email: form.value.email,
+      phone: form.value.phone || null,
+      specialty: form.value.role === 'Doctor' ? form.value.specialty : null,
+    })
+
+    if (profileError) throw new Error('Profile creation failed: ' + profileError.message)
 
     successMessage.value = 'Registration successful! You can now log in.'
     showSuccessDialog.value = true

@@ -48,6 +48,25 @@ async function handleLogin() {
 
     if (authError) throw authError
 
+    // Auto-insert profile if not exists
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', data.user.id)
+      .single()
+    if (!existingProfile) {
+      const { error: insertError } = await supabase.from('profiles').insert({
+        id: data.user.id,
+        role: form.value.role,
+        first_name: data.user.user_metadata?.first_name || 'First',
+        last_name: data.user.user_metadata?.last_name || 'Last',
+        email: data.user.email,
+        phone: data.user.user_metadata?.phone || null,
+        specialty: data.user.user_metadata?.specialty || null,
+      })
+      if (insertError) throw new Error('Profile creation failed: ' + insertError.message)
+    }
+
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
@@ -282,7 +301,7 @@ async function handleLogin() {
 
 .welcome-title {
   background: linear-gradient(45deg, #1976d2, #42a5f5);
-  -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: fadeInUp 0.8s ease-out;
 }

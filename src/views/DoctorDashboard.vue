@@ -11,7 +11,7 @@ const newSlot = ref({
   date: null,
   time: '',
   duration: 30,
-  notes: ''
+  notes: '',
 })
 const loading = ref(false)
 const error = ref(null)
@@ -41,20 +41,20 @@ const timeSlots = [
   { value: '15:00', label: '3:00 PM' },
   { value: '15:30', label: '3:30 PM' },
   { value: '16:00', label: '4:00 PM' },
-  { value: '16:30', label: '4:30 PM' }
-].map(slot => ({
+  { value: '16:30', label: '4:30 PM' },
+].map((slot) => ({
   ...slot,
-  key: `${slot.value}-${slot.label}` // Add unique key for each slot
+  key: `${slot.value}-${slot.label}`, // Add unique key for each slot
 }))
 
 const durationOptions = [
   { value: 30, label: '30 minutes' },
-  { value: 60, label: '1 hour' }
+  { value: 60, label: '1 hour' },
 ]
 
 // Helper function to format time
 function formatTime(time) {
-  if (!time) return '';
+  if (!time) return ''
   try {
     const [hours, minutes] = time.split(':')
     const hour = parseInt(hours)
@@ -69,14 +69,14 @@ function formatTime(time) {
 
 // Helper function to format date
 function formatDate(dateString) {
-  if (!dateString) return '';
+  if (!dateString) return ''
   try {
     return new Date(dateString).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
-    });
+      day: 'numeric',
+    })
   } catch (e) {
     console.error('Error formatting date:', e)
     return ''
@@ -85,7 +85,10 @@ function formatDate(dateString) {
 
 // Helper function to get authenticated user
 async function getAuthUser() {
-  const { data: { user }, error } = await supabase.auth.getUser()
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
   if (error) throw error
   if (!user) throw new Error('No authenticated user found')
   return user
@@ -95,10 +98,11 @@ async function fetchMySlots() {
   try {
     loading.value = true
     const user = await getAuthUser()
-    
+
     const { data, error: fetchError } = await supabase
       .from('available_slots')
-      .select(`
+      .select(
+        `
         id,
         date,
         time,
@@ -117,29 +121,30 @@ async function fetchMySlots() {
             email
           )
         )
-      `)
+      `,
+      )
       .eq('doctor_id', user.id)
       .order('date', { ascending: true })
       .order('time', { ascending: true })
 
     if (fetchError) throw fetchError
-    
+
     // Map the slots with proper formatting and filtering
-    availableSlots.value = (data || []).map(slot => {
+    availableSlots.value = (data || []).map((slot) => {
       const activeAppointment = slot.appointments?.find(
-        app => app.status === 'pending' || app.status === 'confirmed'
+        (app) => app.status === 'pending' || app.status === 'confirmed',
       )
-      
+
       return {
         ...slot,
         formattedTime: formatTime(slot.time),
         formattedDate: formatDate(slot.date),
         appointmentStatus: activeAppointment?.status || null,
-        patientName: activeAppointment?.patient 
+        patientName: activeAppointment?.patient
           ? `${activeAppointment.patient.first_name} ${activeAppointment.patient.last_name}`
           : null,
         patientId: activeAppointment?.patient?.id || null,
-        appointments: slot.appointments || []
+        appointments: slot.appointments || [],
       }
     })
 
@@ -156,10 +161,11 @@ async function fetchAppointments() {
   try {
     loading.value = true
     const user = await getAuthUser()
-    
+
     const { data, error: fetchError } = await supabase
       .from('appointments')
-      .select(`
+      .select(
+        `
         id,
         status,
         notes,
@@ -176,21 +182,22 @@ async function fetchAppointments() {
           duration,
           notes
         )
-      `)
+      `,
+      )
       .eq('slot.doctor_id', user.id)
       .order('created_at', { ascending: false })
 
     if (fetchError) throw fetchError
 
     appointments.value = (data || [])
-      .filter(appointment => appointment?.slot?.date && appointment?.slot?.time)
-      .map(appointment => ({
+      .filter((appointment) => appointment?.slot?.date && appointment?.slot?.time)
+      .map((appointment) => ({
         ...appointment,
         formattedTime: formatTime(appointment.slot.time),
         formattedDate: formatDate(appointment.slot.date),
-        patientName: appointment.patient 
+        patientName: appointment.patient
           ? `${appointment.patient.first_name} ${appointment.patient.last_name}`
-          : 'Unknown Patient'
+          : 'Unknown Patient',
       }))
 
     console.log(`Found ${appointments.value.length} appointments`)
@@ -216,14 +223,14 @@ async function addTimeSlot() {
     const slotDate = new Date(newSlot.value.date)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    
+
     if (slotDate < today) {
       throw new Error('Cannot create slots for past dates')
     }
 
     // Get the time value from the selected time object
-    const timeValue = typeof newSlot.value.time === 'object' ? 
-      newSlot.value.time.value : newSlot.value.time
+    const timeValue =
+      typeof newSlot.value.time === 'object' ? newSlot.value.time.value : newSlot.value.time
 
     // Check for existing slot
     const { data: existingSlot } = await supabase
@@ -239,25 +246,23 @@ async function addTimeSlot() {
     }
 
     // Add new slot
-    const { error: insertError } = await supabase
-      .from('available_slots')
-      .insert({
-        doctor_id: user.id,
-        date: newSlot.value.date,
-        time: timeValue,
-        duration: newSlot.value.duration || 30,
-        notes: newSlot.value.notes?.trim() || '',
-        is_booked: false
-      })
+    const { error: insertError } = await supabase.from('available_slots').insert({
+      doctor_id: user.id,
+      date: newSlot.value.date,
+      time: timeValue,
+      duration: newSlot.value.duration || 30,
+      notes: newSlot.value.notes?.trim() || '',
+      is_booked: false,
+    })
 
     if (insertError) throw insertError
 
     // Reset form
-    newSlot.value = { 
-      date: null, 
-      time: '', 
-      duration: 30, 
-      notes: '' 
+    newSlot.value = {
+      date: null,
+      time: '',
+      duration: 30,
+      notes: '',
     }
 
     // Refresh data
@@ -274,13 +279,13 @@ async function addTimeSlot() {
 }
 
 async function updateAppointmentStatus(appointment, newStatus) {
-  if (!appointment?.id) return;
-  
+  if (!appointment?.id) return
+
   try {
     loading.value = true
-    const updates = { 
+    const updates = {
       status: newStatus,
-      notes: newStatus === 'confirmed' ? doctorNotes.value : null 
+      notes: newStatus === 'confirmed' ? doctorNotes.value : null,
     }
 
     const { error: updateError } = await supabase
@@ -302,11 +307,8 @@ async function updateAppointmentStatus(appointment, newStatus) {
     showNotesDialog.value = false
     selectedAppointment.value = null
     doctorNotes.value = ''
-    
-    await Promise.all([
-      fetchMySlots(),
-      fetchAppointments()
-    ])
+
+    await Promise.all([fetchMySlots(), fetchAppointments()])
   } catch (e) {
     error.value = e.message
     console.error('Error updating appointment status:', e)
@@ -337,27 +339,27 @@ async function handleLogout() {
 }
 
 async function updateSlotStatus(slot, notes = '') {
-  if (!slot?.id) return;
-  
+  if (!slot?.id) return
+
   try {
     loading.value = true
-    const updates = { 
+    const updates = {
       is_booked: !slot.is_booked,
-      notes: !slot.is_booked ? 'Marked as unavailable by doctor' : null
+      notes: !slot.is_booked ? 'Marked as unavailable by doctor' : null,
     }
 
     // First check for any active appointments
     const activeAppointment = slot.appointments?.find(
-      app => app.status === 'pending' || app.status === 'confirmed'
+      (app) => app.status === 'pending' || app.status === 'confirmed',
     )
 
     if (activeAppointment) {
       // If marking as unavailable, cancel the appointment with notes
       const { error: appointmentError } = await supabase
         .from('appointments')
-        .update({ 
+        .update({
           status: 'cancelled',
-          notes: notes || 'Cancelled by doctor'
+          notes: notes || 'Cancelled by doctor',
         })
         .eq('id', activeAppointment.id)
 
@@ -372,10 +374,7 @@ async function updateSlotStatus(slot, notes = '') {
 
     if (updateError) throw updateError
 
-    await Promise.all([
-      fetchMySlots(),
-      fetchAppointments()
-    ])
+    await Promise.all([fetchMySlots(), fetchAppointments()])
 
     // Close dialog and clear selection
     showActionDialog.value = false
@@ -392,15 +391,15 @@ async function updateSlotStatus(slot, notes = '') {
 const upcomingSlots = computed(() => {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  
+
   return availableSlots.value
-    .filter(slot => {
+    .filter((slot) => {
       // Filter for upcoming dates
       const slotDate = new Date(slot.date)
       slotDate.setHours(0, 0, 0, 0)
       return slotDate >= today
     })
-    .filter(slot => {
+    .filter((slot) => {
       // Apply search filter if exists
       if (!searchQuery.value) return true
       const query = searchQuery.value.toLowerCase()
@@ -416,12 +415,12 @@ const upcomingSlots = computed(() => {
       const dateA = new Date(a.date)
       const dateB = new Date(b.date)
       const dateDiff = dateA - dateB
-      
+
       // If same date, sort by time
       if (dateDiff === 0) {
         return a.time.localeCompare(b.time)
       }
-      
+
       return dateDiff
     })
 })
@@ -429,14 +428,14 @@ const upcomingSlots = computed(() => {
 const pastSlots = computed(() => {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  
+
   return availableSlots.value
-    .filter(slot => {
+    .filter((slot) => {
       const slotDate = new Date(slot.date)
       slotDate.setHours(0, 0, 0, 0)
       return slotDate < today
     })
-    .filter(slot => {
+    .filter((slot) => {
       if (!searchQuery.value) return true
       const query = searchQuery.value.toLowerCase()
       return (
@@ -452,7 +451,7 @@ const pastSlots = computed(() => {
       const dateB = new Date(b.date)
       if (dateA > dateB) return -1
       if (dateA < dateB) return 1
-      
+
       // If same date, sort by time
       const timeA = a.time
       const timeB = b.time
@@ -463,37 +462,47 @@ const pastSlots = computed(() => {
 function getStatusColor(slot) {
   if (!slot.is_booked) return 'info'
   switch (slot.appointmentStatus) {
-    case 'confirmed': return 'success'
-    case 'pending': return 'warning'
-    case 'cancelled': return 'error'
-    default: return 'grey'
+    case 'confirmed':
+      return 'success'
+    case 'pending':
+      return 'warning'
+    case 'cancelled':
+      return 'error'
+    default:
+      return 'grey'
   }
 }
 
 function getStatusText(slot) {
   if (!slot.is_booked) return 'Available'
-  return slot.appointmentStatus ? slot.appointmentStatus.charAt(0).toUpperCase() + slot.appointmentStatus.slice(1) : 'Unknown'
+  return slot.appointmentStatus
+    ? slot.appointmentStatus.charAt(0).toUpperCase() + slot.appointmentStatus.slice(1)
+    : 'Unknown'
 }
 
 function getStatusTooltip(slot) {
   if (!slot.is_booked) return 'Slot is available for booking'
   switch (slot.appointmentStatus) {
-    case 'confirmed': return 'Appointment has been confirmed'
-    case 'pending': return 'Waiting for your confirmation'
-    case 'cancelled': return 'Appointment was cancelled'
-    default: return 'Unknown status'
+    case 'confirmed':
+      return 'Appointment has been confirmed'
+    case 'pending':
+      return 'Waiting for your confirmation'
+    case 'cancelled':
+      return 'Appointment was cancelled'
+    default:
+      return 'Unknown status'
   }
 }
 
 async function deleteSlot(slot) {
   if (!slot?.id) return
-  
+
   try {
     loading.value = true
 
     // Check for active appointments
     const hasActiveAppointment = slot.appointments?.some(
-      app => app.status === 'pending' || app.status === 'confirmed'
+      (app) => app.status === 'pending' || app.status === 'confirmed',
     )
 
     if (hasActiveAppointment) {
@@ -501,10 +510,7 @@ async function deleteSlot(slot) {
     }
 
     // Delete the slot
-    const { error: deleteError } = await supabase
-      .from('available_slots')
-      .delete()
-      .eq('id', slot.id)
+    const { error: deleteError } = await supabase.from('available_slots').delete().eq('id', slot.id)
 
     if (deleteError) throw deleteError
 
@@ -547,47 +553,49 @@ const analytics = computed(() => {
   today.setHours(0, 0, 0, 0)
 
   // Count all available slots (not booked)
-  const availableCount = upcomingSlots.value.filter(slot => !slot.is_booked).length
+  const availableCount = upcomingSlots.value.filter((slot) => !slot.is_booked).length
 
   // Count pending appointments
   const pendingAppointments = upcomingSlots.value.filter(
-    slot => slot.appointmentStatus === 'pending'
+    (slot) => slot.appointmentStatus === 'pending',
   ).length
 
   // Count confirmed appointments
   const confirmedAppointments = upcomingSlots.value.filter(
-    slot => slot.appointmentStatus === 'confirmed'
+    (slot) => slot.appointmentStatus === 'confirmed',
   ).length
 
   // Count today's appointments
-  const todayAppointments = upcomingSlots.value.filter(slot => {
+  const todayAppointments = upcomingSlots.value.filter((slot) => {
     const slotDate = new Date(slot.date)
     slotDate.setHours(0, 0, 0, 0)
-    return slotDate.getTime() === today.getTime() && 
-           (slot.appointmentStatus === 'pending' || slot.appointmentStatus === 'confirmed')
+    return (
+      slotDate.getTime() === today.getTime() &&
+      (slot.appointmentStatus === 'pending' || slot.appointmentStatus === 'confirmed')
+    )
   }).length
 
   return {
     totalSlots: availableCount,
     pendingAppointments,
     confirmedAppointments,
-    todayAppointments
+    todayAppointments,
   }
 })
 
 // Add a function to validate time slot selection
 function validateTimeSlot(date, time) {
   if (!date || !time) return false
-  
+
   const selectedDateTime = new Date(`${date}T${time}`)
   const now = new Date()
-  
+
   // Cannot select past time
   if (selectedDateTime < now) {
     error.value = 'Cannot select a past time'
     return false
   }
-  
+
   return true
 }
 
@@ -595,7 +603,7 @@ function validateTimeSlot(date, time) {
 async function fetchDoctorProfile() {
   try {
     const user = await getAuthUser()
-    
+
     const { data, error: profileError } = await supabase
       .from('profiles')
       .select('first_name, last_name, specialty')
@@ -603,7 +611,7 @@ async function fetchDoctorProfile() {
       .single()
 
     if (profileError) throw profileError
-    
+
     doctorProfile.value = data
   } catch (e) {
     console.error('Error fetching doctor profile:', e)
@@ -612,11 +620,7 @@ async function fetchDoctorProfile() {
 
 onMounted(async () => {
   try {
-    await Promise.all([
-      fetchDoctorProfile(),
-      fetchMySlots(),
-      fetchAppointments()
-    ])
+    await Promise.all([fetchDoctorProfile(), fetchMySlots(), fetchAppointments()])
   } catch (e) {
     error.value = e.message
     console.error('Error during initialization:', e)
@@ -634,7 +638,11 @@ onMounted(async () => {
             <div>
               <h1 class="text-h4 mb-2">Hello, Dr. {{ doctorProfile?.last_name || 'Doctor' }}!</h1>
               <div class="text-subtitle-1 text-grey">
-                {{ doctorProfile?.specialty ? `Specialty: ${doctorProfile.specialty}` : 'Welcome to your dashboard' }}
+                {{
+                  doctorProfile?.specialty
+                    ? `Specialty: ${doctorProfile.specialty}`
+                    : 'Welcome to your dashboard'
+                }}
               </div>
             </div>
             <v-btn
@@ -648,68 +656,84 @@ onMounted(async () => {
             </v-btn>
           </v-col>
         </v-row>
-        
+
         <!-- Analytics Cards -->
         <v-row class="mb-6">
           <v-col cols="12" sm="6" md="3">
-            <v-card class="analytics-card" elevation="2" :color="analytics.todayAppointments > 0 ? 'primary' : ''">
-              <v-card-text>
+            <v-card class="analytics-card card-gradient-blue" elevation="3">
+              <v-card-text class="pa-4">
                 <div class="d-flex justify-space-between align-center">
                   <div>
-                    <div class="text-h4 mb-1">{{ analytics.todayAppointments }}</div>
-                    <div class="text-caption">Today's Appointments</div>
+                    <div class="text-h3 font-weight-bold text-white mb-1">
+                      {{ analytics.todayAppointments }}
+                    </div>
+                    <div class="text-subtitle-2 text-white" style="opacity: 0.9">
+                      Today's Appointments
+                    </div>
                   </div>
-                  <v-icon size="48" :color="analytics.todayAppointments > 0 ? 'white' : 'primary'">
-                    mdi-calendar-today
-                  </v-icon>
+                  <div class="icon-wrapper icon-blue">
+                    <v-icon size="40" color="white">mdi-calendar-today</v-icon>
+                  </div>
                 </div>
               </v-card-text>
             </v-card>
           </v-col>
 
           <v-col cols="12" sm="6" md="3">
-            <v-card class="analytics-card" elevation="2" :color="analytics.pendingAppointments > 0 ? 'warning' : ''">
-              <v-card-text>
+            <v-card class="analytics-card card-gradient-orange" elevation="3">
+              <v-card-text class="pa-4">
                 <div class="d-flex justify-space-between align-center">
                   <div>
-                    <div class="text-h4 mb-1">{{ analytics.pendingAppointments }}</div>
-                    <div class="text-caption">Pending Confirmations</div>
+                    <div class="text-h3 font-weight-bold text-white mb-1">
+                      {{ analytics.pendingAppointments }}
+                    </div>
+                    <div class="text-subtitle-2 text-white" style="opacity: 0.9">
+                      Pending Confirmations
+                    </div>
                   </div>
-                  <v-icon size="48" :color="analytics.pendingAppointments > 0 ? 'white' : 'warning'">
-                    mdi-clock-alert
-                  </v-icon>
+                  <div class="icon-wrapper icon-orange">
+                    <v-icon size="40" color="white">mdi-clock-alert</v-icon>
+                  </div>
                 </div>
               </v-card-text>
             </v-card>
           </v-col>
 
           <v-col cols="12" sm="6" md="3">
-            <v-card class="analytics-card" elevation="2" :color="analytics.confirmedAppointments > 0 ? 'success' : ''">
-              <v-card-text>
+            <v-card class="analytics-card card-gradient-green" elevation="3">
+              <v-card-text class="pa-4">
                 <div class="d-flex justify-space-between align-center">
                   <div>
-                    <div class="text-h4 mb-1">{{ analytics.confirmedAppointments }}</div>
-                    <div class="text-caption">Confirmed Appointments</div>
+                    <div class="text-h3 font-weight-bold text-white mb-1">
+                      {{ analytics.confirmedAppointments }}
+                    </div>
+                    <div class="text-subtitle-2 text-white" style="opacity: 0.9">
+                      Confirmed Appointments
+                    </div>
                   </div>
-                  <v-icon size="48" :color="analytics.confirmedAppointments > 0 ? 'white' : 'success'">
-                    mdi-check-circle
-                  </v-icon>
+                  <div class="icon-wrapper icon-green">
+                    <v-icon size="40" color="white">mdi-check-circle</v-icon>
+                  </div>
                 </div>
               </v-card-text>
             </v-card>
           </v-col>
 
           <v-col cols="12" sm="6" md="3">
-            <v-card class="analytics-card" elevation="2" :color="analytics.totalSlots > 0 ? 'info' : ''">
-              <v-card-text>
+            <v-card class="analytics-card card-gradient-purple" elevation="3">
+              <v-card-text class="pa-4">
                 <div class="d-flex justify-space-between align-center">
                   <div>
-                    <div class="text-h4 mb-1">{{ analytics.totalSlots }}</div>
-                    <div class="text-caption">Available Time Slots</div>
+                    <div class="text-h3 font-weight-bold text-white mb-1">
+                      {{ analytics.totalSlots }}
+                    </div>
+                    <div class="text-subtitle-2 text-white" style="opacity: 0.9">
+                      Available Time Slots
+                    </div>
                   </div>
-                  <v-icon size="48" :color="analytics.totalSlots > 0 ? 'white' : 'info'">
-                    mdi-calendar-clock
-                  </v-icon>
+                  <div class="icon-wrapper icon-purple">
+                    <v-icon size="40" color="white">mdi-calendar-clock</v-icon>
+                  </div>
                 </div>
               </v-card-text>
             </v-card>
@@ -734,7 +758,7 @@ onMounted(async () => {
             <v-icon icon="mdi-calendar-plus" class="mr-2" color="primary"></v-icon>
             Add New Time Slot
           </v-card-title>
-          
+
           <v-card-text>
             <v-row>
               <v-col cols="12" md="6">
@@ -829,14 +853,9 @@ onMounted(async () => {
               variant="outlined"
             ></v-text-field>
           </v-card-title>
-          
+
           <v-card-text>
-            <v-tabs
-              v-model="activeTab"
-              color="primary"
-              align-tabs="center"
-              class="mb-4"
-            >
+            <v-tabs v-model="activeTab" color="primary" align-tabs="center" class="mb-4">
               <v-tab value="upcoming">
                 <v-icon icon="mdi-calendar-arrow-right" class="mr-2"></v-icon>
                 Upcoming Slots
@@ -856,7 +875,7 @@ onMounted(async () => {
                     { title: 'Duration', key: 'duration', align: 'start' },
                     { title: 'Patient', key: 'patientName', align: 'start' },
                     { title: 'Status', key: 'status', align: 'start' },
-                    { title: 'Actions', key: 'actions', align: 'center' }
+                    { title: 'Actions', key: 'actions', align: 'center' },
                   ]"
                   :items="upcomingSlots"
                   :loading="loading"
@@ -876,19 +895,13 @@ onMounted(async () => {
                       </v-avatar>
                       {{ item.patientName }}
                     </div>
-                    <v-chip v-else size="small" color="grey" variant="tonal">
-                      No patient
-                    </v-chip>
+                    <v-chip v-else size="small" color="grey" variant="tonal"> No patient </v-chip>
                   </template>
-                  
+
                   <template v-slot:item.status="{ item }">
                     <v-tooltip :text="getStatusTooltip(item)">
                       <template v-slot:activator="{ props }">
-                        <v-chip
-                          v-bind="props"
-                          :color="getStatusColor(item)"
-                          size="small"
-                        >
+                        <v-chip v-bind="props" :color="getStatusColor(item)" size="small">
                           {{ getStatusText(item) }}
                         </v-chip>
                       </template>
@@ -934,7 +947,12 @@ onMounted(async () => {
 
                   <template v-slot:no-data>
                     <div class="d-flex flex-column align-center pa-4">
-                      <v-icon icon="mdi-calendar-blank" size="64" color="grey" class="mb-2"></v-icon>
+                      <v-icon
+                        icon="mdi-calendar-blank"
+                        size="64"
+                        color="grey"
+                        class="mb-2"
+                      ></v-icon>
                       <div class="text-grey text-body-1">No upcoming appointments found</div>
                       <div class="text-grey-darken-1 text-caption">Try adding new time slots</div>
                     </div>
@@ -949,7 +967,7 @@ onMounted(async () => {
                     { title: 'Time', key: 'formattedTime', align: 'start', sortable: true },
                     { title: 'Duration', key: 'duration', align: 'start' },
                     { title: 'Patient', key: 'patientName', align: 'start' },
-                    { title: 'Status', key: 'status', align: 'start' }
+                    { title: 'Status', key: 'status', align: 'start' },
                   ]"
                   :items="pastSlots"
                   :loading="loading"
@@ -969,11 +987,9 @@ onMounted(async () => {
                       </v-avatar>
                       {{ item.patientName }}
                     </div>
-                    <v-chip v-else size="small" color="grey" variant="tonal">
-                      No patient
-                    </v-chip>
+                    <v-chip v-else size="small" color="grey" variant="tonal"> No patient </v-chip>
                   </template>
-                  
+
                   <template v-slot:item.status="{ item }">
                     <v-tooltip :text="getStatusTooltip(item)">
                       <template v-slot:activator="{ props }">
@@ -991,7 +1007,12 @@ onMounted(async () => {
 
                   <template v-slot:no-data>
                     <div class="d-flex flex-column align-center pa-4">
-                      <v-icon icon="mdi-calendar-blank" size="64" color="grey" class="mb-2"></v-icon>
+                      <v-icon
+                        icon="mdi-calendar-blank"
+                        size="64"
+                        color="grey"
+                        class="mb-2"
+                      ></v-icon>
                       <div class="text-grey text-body-1">No past appointments found</div>
                     </div>
                   </template>
@@ -1008,7 +1029,7 @@ onMounted(async () => {
               <v-icon icon="mdi-note-text" class="mr-2" color="primary"></v-icon>
               Add Confirmation Notes
             </v-card-title>
-            
+
             <v-card-text>
               <v-textarea
                 v-model="doctorNotes"
@@ -1018,31 +1039,25 @@ onMounted(async () => {
                 placeholder="Add any special instructions or notes for the patient"
                 class="mb-2"
               ></v-textarea>
-              
-              <v-alert
-                type="info"
-                variant="tonal"
-                class="mb-0"
-              >
+
+              <v-alert type="info" variant="tonal" class="mb-0">
                 These notes will be visible to the patient after confirmation.
               </v-alert>
             </v-card-text>
-            
+
             <v-card-actions>
               <v-spacer></v-spacer>
-              <v-btn
-                color="grey-darken-1"
-                variant="text"
-                @click="showNotesDialog = false"
-              >
+              <v-btn color="grey-darken-1" variant="text" @click="showNotesDialog = false">
                 Cancel
               </v-btn>
               <v-btn
                 color="success"
                 variant="tonal"
-                @click="() => {
-                  updateAppointmentStatus(selectedAppointment, 'confirmed')
-                }"
+                @click="
+                  () => {
+                    updateAppointmentStatus(selectedAppointment, 'confirmed')
+                  }
+                "
                 :loading="loading"
               >
                 Confirm Appointment
@@ -1055,20 +1070,20 @@ onMounted(async () => {
         <v-dialog v-model="showActionDialog" max-width="500">
           <v-card>
             <v-card-title class="text-h5 pa-4">
-              <v-icon 
-                :icon="actionDialogType === 'delete' ? 'mdi-delete-alert' : 'mdi-cancel'" 
-                class="mr-2" 
+              <v-icon
+                :icon="actionDialogType === 'delete' ? 'mdi-delete-alert' : 'mdi-cancel'"
+                class="mr-2"
                 :color="actionDialogType === 'delete' ? 'error' : 'warning'"
               ></v-icon>
               Confirm {{ actionDialogType === 'delete' ? 'Delete' : 'Cancel' }}
             </v-card-title>
-            
+
             <v-card-text>
               <p class="text-body-1">
-                Are you sure you want to {{ actionDialogType === 'delete' ? 'delete' : 'cancel' }} 
+                Are you sure you want to {{ actionDialogType === 'delete' ? 'delete' : 'cancel' }}
                 this time slot?
               </p>
-              
+
               <div v-if="selectedSlot" class="mt-4 pa-4 bg-grey-lighten-4 rounded-lg">
                 <div class="d-flex align-center mb-2">
                   <v-icon icon="mdi-calendar" class="mr-2" color="primary"></v-icon>
@@ -1105,17 +1120,14 @@ onMounted(async () => {
                 variant="tonal"
                 class="mt-4"
               >
-                This action cannot be undone. Any cancelled appointments for this slot will also be deleted.
+                This action cannot be undone. Any cancelled appointments for this slot will also be
+                deleted.
               </v-alert>
             </v-card-text>
-            
+
             <v-card-actions>
               <v-spacer></v-spacer>
-              <v-btn
-                color="grey-darken-1"
-                variant="text"
-                @click="showActionDialog = false"
-              >
+              <v-btn color="grey-darken-1" variant="text" @click="showActionDialog = false">
                 Cancel
               </v-btn>
               <v-btn
@@ -1135,31 +1147,127 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/* Color Palette - Organized and Professional */
+:root {
+  --color-blue-primary: #1976d2;
+  --color-blue-light: #42a5f5;
+  --color-blue-dark: #1565c0;
+
+  --color-green-primary: #43a047;
+  --color-green-light: #66bb6a;
+  --color-green-dark: #2e7d32;
+
+  --color-orange-primary: #fb8c00;
+  --color-orange-light: #ffa726;
+  --color-orange-dark: #e65100;
+
+  --color-purple-primary: #8e24aa;
+  --color-purple-light: #ab47bc;
+  --color-purple-dark: #6a1b9a;
+
+  --color-red-primary: #e53935;
+  --color-red-light: #ef5350;
+  --color-red-dark: #c62828;
+
+  --color-grey-light: #f5f5f5;
+  --color-grey-medium: #9e9e9e;
+  --color-grey-dark: #424242;
+}
+
 /* Base Layout */
 .v-container {
   max-width: 100%;
-  padding: 16px;
+  padding: 24px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
 }
 
-/* Analytics Cards */
+/* Analytics Cards - Modern Gradient Design */
 .analytics-card {
   height: 100%;
-  min-height: 120px;
-  transition: all 0.3s ease;
+  min-height: 140px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.analytics-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  opacity: 0.1;
+  background: white;
+  transform: translate(30%, -30%);
 }
 
 .analytics-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
 }
 
-.analytics-card .text-caption {
-  font-size: 0.875rem;
-  opacity: 0.9;
+/* Card Gradients */
+.card-gradient-blue {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
-.analytics-card .v-icon {
-  opacity: 0.9;
-  transition: transform 0.3s ease;
+.card-gradient-orange {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.card-gradient-green {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.card-gradient-purple {
+  background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
+}
+
+/* Icon Wrapper */
+.icon-wrapper {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+/* Main Cards */
+.v-card {
+  border-radius: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07) !important;
+  transition: box-shadow 0.3s ease;
+}
+
+.v-card:hover {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.v-dialog > .v-card {
+  margin-bottom: 0;
+}
+
+.v-card-title {
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.v-card-title .v-icon {
+  color: white !important;
 }
 
 /* Table Styles */
@@ -1174,24 +1282,37 @@ onMounted(async () => {
   width: 100%;
   border-radius: 12px;
   overflow: hidden;
+  background: white;
 }
 
-.v-data-table .v-data-table-header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: white;
-  font-weight: 600;
-  color: #1976d2;
+.v-data-table :deep(.v-data-table__wrapper) {
+  border-radius: 12px;
+}
+
+.v-data-table :deep(thead) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.v-data-table :deep(thead th) {
+  color: white !important;
+  font-weight: 600 !important;
   text-transform: uppercase;
   font-size: 0.75rem;
   letter-spacing: 0.5px;
+  padding: 16px !important;
 }
 
-/* Table cell styles */
+.v-data-table :deep(tbody tr) {
+  transition: background-color 0.2s ease;
+}
+
+.v-data-table :deep(tbody tr:hover) {
+  background-color: #f5f7fa !important;
+}
+
 .v-data-table :deep(.v-data-table__wrapper) td,
 .v-data-table :deep(.v-data-table__wrapper) th {
-  padding: 8px 16px;
+  padding: 12px 16px;
   white-space: nowrap;
 }
 
@@ -1201,22 +1322,15 @@ onMounted(async () => {
   max-width: 300px;
 }
 
-/* Card and Dialog Styles */
-.v-card {
-  margin-bottom: 24px;
-  border-radius: 12px;
+/* Tabs */
+.v-tabs {
+  background: transparent;
 }
 
-.v-dialog > .v-card {
-  margin-bottom: 0;
-}
-
-.v-card-title {
-  padding: 16px 24px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
+.v-tab {
+  text-transform: none;
+  font-weight: 500;
+  letter-spacing: 0.25px;
 }
 
 /* Controls */
@@ -1236,7 +1350,7 @@ onMounted(async () => {
   min-width: 150px;
 }
 
-/* Action Buttons */
+/* Action Buttons - Color-coded */
 .action-buttons {
   display: flex;
   gap: 8px;
@@ -1247,26 +1361,74 @@ onMounted(async () => {
   min-width: 100px;
 }
 
-/* Status Chips */
+/* Status Chips - Refined Colors */
+.v-chip {
+  font-weight: 500;
+  letter-spacing: 0.25px;
+  border-radius: 8px;
+}
+
 .status-chip {
   min-width: 90px;
   justify-content: center;
 }
 
-.status-pending { background-color: #FFF3E0 !important; color: #E65100 !important; }
-.status-confirmed { background-color: #E8F5E9 !important; color: #2E7D32 !important; }
-.status-cancelled { background-color: #FFEBEE !important; color: #C62828 !important; }
-.status-completed { background-color: #E3F2FD !important; color: #1565C0 !important; }
+/* Date Picker */
+.v-date-picker {
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
+
+/* Buttons */
+.v-btn {
+  border-radius: 10px;
+  text-transform: none;
+  font-weight: 500;
+  letter-spacing: 0.25px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.v-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Text Fields and Inputs */
+.v-text-field,
+.v-select,
+.v-textarea {
+  border-radius: 10px;
+}
+
+/* Alerts */
+.v-alert {
+  border-radius: 12px;
+  border-left: 4px solid;
+}
 
 /* Notes Field */
 .notes-field {
   min-height: 100px;
 }
 
+/* Avatar */
+.v-avatar {
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Tooltips */
+.v-tooltip {
+  border-radius: 8px;
+}
+
 /* Responsive Styles */
 @media (max-width: 960px) {
-  .v-container { padding: 12px; }
-  
+  .v-container {
+    padding: 16px;
+  }
+
   .controls-wrapper {
     flex-direction: column;
   }
@@ -1275,18 +1437,27 @@ onMounted(async () => {
   .filter-select {
     width: 100%;
   }
+
+  .analytics-card {
+    min-height: 120px;
+  }
 }
 
 @media (max-width: 600px) {
-  .v-container { padding: 8px; }
-  
+  .v-container {
+    padding: 12px;
+    background: #f5f7fa;
+  }
+
   .v-card-title {
-    padding: 12px 16px;
+    padding: 16px;
     flex-direction: column;
     align-items: stretch;
   }
 
-  .v-card-text { padding: 16px; }
+  .v-card-text {
+    padding: 16px;
+  }
 
   .action-buttons {
     flex-direction: column;
@@ -1294,6 +1465,14 @@ onMounted(async () => {
 
   .action-button {
     width: 100%;
+  }
+
+  .analytics-card {
+    min-height: 110px;
+  }
+
+  .analytics-card .text-h3 {
+    font-size: 2rem;
   }
 
   /* Mobile table adjustments */
@@ -1320,15 +1499,14 @@ onMounted(async () => {
   }
 }
 
-/* Dark Mode */
-@media (prefers-color-scheme: dark) {
-  .v-data-table .v-data-table-header {
-    background: #1E1E1E;
-  }
+/* Loading State */
+.v-progress-circular {
+  color: #667eea;
+}
 
-  .v-card {
-    background-color: #1E1E1E;
-  }
+/* Empty State */
+.no-data-icon {
+  opacity: 0.3;
 }
 
 /* Print Styles */
@@ -1347,5 +1525,9 @@ onMounted(async () => {
   .v-data-table {
     width: 100% !important;
   }
+
+  .v-container {
+    background: white;
+  }
 }
-</style> 
+</style>
