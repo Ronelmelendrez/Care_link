@@ -759,7 +759,7 @@ onMounted(async () => {
             Add New Time Slot
           </v-card-title>
 
-          <v-card-text>
+          <v-card-text class="pa-4">
             <v-row>
               <v-col cols="12" md="6">
                 <v-date-picker

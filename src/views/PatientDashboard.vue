@@ -28,7 +28,7 @@ const patientProfile = ref(null)
 
 // Helper function to format time
 function formatTime(time) {
-  if (!time) return '';
+  if (!time) return ''
   try {
     const [hours, minutes] = time.split(':')
     const hour = parseInt(hours)
@@ -43,14 +43,14 @@ function formatTime(time) {
 
 // Helper function to format date
 function formatDate(dateString) {
-  if (!dateString) return '';
+  if (!dateString) return ''
   try {
     return new Date(dateString).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
-    });
+      day: 'numeric',
+    })
   } catch (e) {
     console.error('Error formatting date:', e)
     return ''
@@ -59,7 +59,10 @@ function formatDate(dateString) {
 
 // Helper function to get authenticated user
 async function getAuthUser() {
-  const { data: { user }, error } = await supabase.auth.getUser()
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser()
   if (error) throw error
   if (!user) throw new Error('No authenticated user found')
   return user
@@ -74,7 +77,8 @@ async function fetchDoctors() {
 
     const { data, error: fetchError } = await supabase
       .from('profiles')
-      .select(`
+      .select(
+        `
         id,
         first_name,
         last_name,
@@ -88,44 +92,44 @@ async function fetchDoctors() {
           is_booked,
           notes
         )
-      `)
+      `,
+      )
       .eq('role', 'Doctor')
       .order('first_name')
 
     if (fetchError) throw fetchError
 
     // Process doctors data
-    doctors.value = (data || [])
-      .map(doctor => {
-        // Filter available slots for this doctor
-        const doctorSlots = (doctor.available_slots || []).filter(slot => {
-          if (!slot?.date || !slot?.time) return false
-          const slotDate = new Date(slot.date)
-          return !slot.is_booked && slotDate >= today
-        })
+    doctors.value = (data || []).map((doctor) => {
+      // Filter available slots for this doctor
+      const doctorSlots = (doctor.available_slots || []).filter((slot) => {
+        if (!slot?.date || !slot?.time) return false
+        const slotDate = new Date(slot.date)
+        return !slot.is_booked && slotDate >= today
+      })
 
-        return {
+      return {
         id: doctor.id,
         first_name: doctor.first_name,
         last_name: doctor.last_name,
         specialty: doctor.specialty || 'General Practice',
         fullName: `Dr. ${doctor.first_name} ${doctor.last_name}`,
-          email: doctor.email,
-          availableSlots: doctorSlots.length,
-          slots: doctorSlots.map(slot => ({
-            ...slot,
-            formattedTime: formatTime(slot.time),
-            formattedDate: formatDate(slot.date)
-          }))
-        }
-      })
+        email: doctor.email,
+        availableSlots: doctorSlots.length,
+        slots: doctorSlots.map((slot) => ({
+          ...slot,
+          formattedTime: formatTime(slot.time),
+          formattedDate: formatDate(slot.date),
+        })),
+      }
+    })
 
     // Sort doctors by number of available slots
     doctors.value.sort((a, b) => b.availableSlots - a.availableSlots)
 
     // Restore selected doctor if exists
     if (selectedDoctor.value?.id) {
-      const currentDoctor = doctors.value.find(d => d.id === selectedDoctor.value.id)
+      const currentDoctor = doctors.value.find((d) => d.id === selectedDoctor.value.id)
       if (currentDoctor) {
         selectedDoctor.value = currentDoctor
         await fetchAvailableSlots(currentDoctor)
@@ -144,7 +148,7 @@ async function fetchDoctors() {
 // Fetch available slots for selected doctor
 async function fetchAvailableSlots(doctor) {
   if (!doctor?.id) return
-  
+
   try {
     loading.value = true
     const today = new Date()
@@ -152,7 +156,8 @@ async function fetchAvailableSlots(doctor) {
 
     const { data, error: fetchError } = await supabase
       .from('available_slots')
-      .select(`
+      .select(
+        `
         id,
         date,
         time,
@@ -171,7 +176,8 @@ async function fetchAvailableSlots(doctor) {
           status,
           notes
         )
-      `)
+      `,
+      )
       .eq('doctor_id', doctor.id)
       .eq('is_booked', false)
       .gte('date', today.toISOString().split('T')[0])
@@ -181,22 +187,24 @@ async function fetchAvailableSlots(doctor) {
     if (fetchError) throw fetchError
 
     availableSlots.value = (data || [])
-      .filter(slot => {
+      .filter((slot) => {
         // Filter out slots that have pending or confirmed appointments
         const hasActiveAppointment = slot.appointments?.some(
-          app => app.status === 'pending' || app.status === 'confirmed'
+          (app) => app.status === 'pending' || app.status === 'confirmed',
         )
         return !hasActiveAppointment
       })
-      .map(slot => ({
-      ...slot,
-      formattedTime: formatTime(slot.time),
+      .map((slot) => ({
+        ...slot,
+        formattedTime: formatTime(slot.time),
         formattedDate: formatDate(slot.date),
         doctorName: `Dr. ${slot.doctor.first_name} ${slot.doctor.last_name}`,
-        specialty: slot.doctor.specialty || 'General Practice'
-    }))
+        specialty: slot.doctor.specialty || 'General Practice',
+      }))
 
-    console.log(`Found ${availableSlots.value.length} available slots for doctor ${doctor.fullName}`)
+    console.log(
+      `Found ${availableSlots.value.length} available slots for doctor ${doctor.fullName}`,
+    )
   } catch (e) {
     error.value = e.message
     console.error('Error fetching available slots:', e)
@@ -209,10 +217,11 @@ async function fetchAvailableSlots(doctor) {
 async function fetchMyAppointments() {
   try {
     const user = await getAuthUser()
-    
+
     const { data, error: fetchError } = await supabase
       .from('appointments')
-      .select(`
+      .select(
+        `
         id,
         status,
         notes,
@@ -230,25 +239,26 @@ async function fetchMyAppointments() {
             email
           )
         )
-      `)
+      `,
+      )
       .eq('patient_id', user.id)
       .order('created_at', { ascending: false })
 
     if (fetchError) throw fetchError
 
     myAppointments.value = (data || [])
-      .filter(appointment => appointment?.slot?.date && appointment?.slot?.time)
-      .map(appointment => ({
+      .filter((appointment) => appointment?.slot?.date && appointment?.slot?.time)
+      .map((appointment) => ({
         id: appointment.id,
         slot_id: appointment.slot.id,
         status: appointment.status,
-      formattedTime: formatTime(appointment.slot.time),
+        formattedTime: formatTime(appointment.slot.time),
         formattedDate: formatDate(appointment.slot.date),
         doctorName: `Dr. ${appointment.slot.doctor.first_name} ${appointment.slot.doctor.last_name}`,
         specialty: appointment.slot.doctor.specialty || 'General Practice',
         date: appointment.slot.date,
         created_at: appointment.created_at,
-        notes: appointment.notes
+        notes: appointment.notes,
       }))
 
     console.log('Fetched appointments:', myAppointments.value.length)
@@ -261,7 +271,7 @@ async function fetchMyAppointments() {
 // Book an appointment
 async function bookAppointment(slot) {
   if (!slot?.id) return
-  
+
   try {
     loading.value = true
     const user = await getAuthUser()
@@ -269,23 +279,26 @@ async function bookAppointment(slot) {
     // First check if the slot is still available
     const { data: slotCheck, error: checkError } = await supabase
       .from('available_slots')
-      .select(`
+      .select(
+        `
         id, 
         is_booked,
         appointments (
           id,
           status
         )
-      `)
+      `,
+      )
       .eq('id', slot.id)
       .single()
 
     if (checkError) throw checkError
-    
+
     // Check both is_booked flag and existing active appointments
-    if (slotCheck.is_booked || slotCheck.appointments?.some(
-      app => app.status === 'pending' || app.status === 'confirmed'
-    )) {
+    if (
+      slotCheck.is_booked ||
+      slotCheck.appointments?.some((app) => app.status === 'pending' || app.status === 'confirmed')
+    ) {
       throw new Error('This slot has already been booked. Please choose another time.')
     }
 
@@ -296,7 +309,7 @@ async function bookAppointment(slot) {
         patient_id: user.id,
         slot_id: slot.id,
         status: 'pending',
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
       })
       .select()
       .single()
@@ -312,10 +325,7 @@ async function bookAppointment(slot) {
     if (slotError) throw slotError
 
     // Refresh data
-    await Promise.all([
-      fetchAvailableSlots(selectedDoctor.value),
-      fetchMyAppointments()
-    ])
+    await Promise.all([fetchAvailableSlots(selectedDoctor.value), fetchMyAppointments()])
 
     // Show success message
     error.value = null
@@ -330,7 +340,7 @@ async function bookAppointment(slot) {
 // Cancel an appointment
 async function cancelAppointment(appointment) {
   if (!appointment?.id || !appointment?.slot_id) return
-  
+
   try {
     loading.value = true
 
@@ -349,8 +359,8 @@ async function cancelAppointment(appointment) {
     // Update appointment status
     const { error: appointmentError } = await supabase
       .from('appointments')
-      .update({ 
-        status: 'cancelled'
+      .update({
+        status: 'cancelled',
       })
       .eq('id', appointment.id)
 
@@ -365,14 +375,11 @@ async function cancelAppointment(appointment) {
     if (slotError) throw slotError
 
     // Refresh data
-    await Promise.all([
-      fetchAvailableSlots(selectedDoctor.value),
-      fetchMyAppointments()
-    ])
+    await Promise.all([fetchAvailableSlots(selectedDoctor.value), fetchMyAppointments()])
 
     // Clear any existing error
     error.value = null
-    
+
     // Close confirmation dialog
     showConfirmDialog.value = false
     confirmDialogItem.value = null
@@ -388,10 +395,10 @@ async function cancelAppointment(appointment) {
 // Delete a cancelled appointment
 async function deleteAppointment(appointment) {
   if (!appointment?.id) return
-  
+
   try {
     loading.value = true
-    
+
     // First check if the appointment can be deleted
     const { data: appointmentCheck, error: checkError } = await supabase
       .from('appointments')
@@ -418,7 +425,7 @@ async function deleteAppointment(appointment) {
 
     // Clear any existing error
     error.value = null
-    
+
     // Close confirmation dialog
     showConfirmDialog.value = false
     confirmDialogItem.value = null
@@ -459,46 +466,41 @@ async function handleLogout() {
 // Add computed properties for filtered and sorted appointments
 const filteredAppointments = computed(() => {
   let filtered = [...myAppointments.value]
-  
+
   // Apply status filter
   if (filterStatus.value !== 'all') {
-    filtered = filtered.filter(app => app.status === filterStatus.value)
+    filtered = filtered.filter((app) => app.status === filterStatus.value)
   }
 
   // Apply search
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(app => 
-      app.doctorName.toLowerCase().includes(query) ||
-      app.specialty.toLowerCase().includes(query) ||
-      app.status.toLowerCase().includes(query)
+    filtered = filtered.filter(
+      (app) =>
+        app.doctorName.toLowerCase().includes(query) ||
+        app.specialty.toLowerCase().includes(query) ||
+        app.status.toLowerCase().includes(query),
     )
   }
 
   // Apply sorting
   filtered.sort((a, b) => {
-    const aValue = sortBy.value.key === 'created_at' 
-      ? new Date(a.created_at) 
-      : a[sortBy.value.key]
-    const bValue = sortBy.value.key === 'created_at' 
-      ? new Date(b.created_at) 
-      : b[sortBy.value.key]
-    
-    return sortBy.value.order === 'desc' 
-      ? bValue > aValue ? 1 : -1
-      : aValue > bValue ? 1 : -1
+    const aValue = sortBy.value.key === 'created_at' ? new Date(a.created_at) : a[sortBy.value.key]
+    const bValue = sortBy.value.key === 'created_at' ? new Date(b.created_at) : b[sortBy.value.key]
+
+    return sortBy.value.order === 'desc' ? (bValue > aValue ? 1 : -1) : aValue > bValue ? 1 : -1
   })
 
   return filtered
 })
 
 // Add computed properties for active and past appointments
-const activeAppointments = computed(() => 
-  filteredAppointments.value.filter(app => app.status !== 'cancelled')
+const activeAppointments = computed(() =>
+  filteredAppointments.value.filter((app) => app.status !== 'cancelled'),
 )
 
-const pastAppointments = computed(() => 
-  filteredAppointments.value.filter(app => app.status === 'cancelled')
+const pastAppointments = computed(() =>
+  filteredAppointments.value.filter((app) => app.status === 'cancelled'),
 )
 
 // Modify the existing cancel appointment function to use confirmation dialog
@@ -519,13 +521,13 @@ async function handleDeleteAppointment(appointment) {
 async function handleConfirmDialog() {
   try {
     loading.value = true
-    
+
     if (confirmDialogAction.value === 'cancel') {
       await cancelAppointment(confirmDialogItem.value)
     } else if (confirmDialogAction.value === 'delete') {
       await deleteAppointment(confirmDialogItem.value)
     }
-    
+
     showConfirmDialog.value = false
     confirmDialogItem.value = null
     confirmDialogAction.value = null
@@ -540,20 +542,28 @@ async function handleConfirmDialog() {
 // Add function to get status color
 function getStatusColor(status) {
   switch (status) {
-    case 'confirmed': return 'success'
-    case 'pending': return 'warning'
-    case 'cancelled': return 'error'
-    default: return 'grey'
+    case 'confirmed':
+      return 'success'
+    case 'pending':
+      return 'warning'
+    case 'cancelled':
+      return 'error'
+    default:
+      return 'grey'
   }
 }
 
 // Add function to get status tooltip
 function getStatusTooltip(status) {
   switch (status) {
-    case 'confirmed': return 'Appointment confirmed by doctor'
-    case 'pending': return 'Waiting for doctor confirmation'
-    case 'cancelled': return 'Appointment cancelled'
-    default: return 'Unknown status'
+    case 'confirmed':
+      return 'Appointment confirmed by doctor'
+    case 'pending':
+      return 'Waiting for doctor confirmation'
+    case 'cancelled':
+      return 'Appointment cancelled'
+    default:
+      return 'Unknown status'
   }
 }
 
@@ -563,12 +573,12 @@ function getRelativeTime(date) {
   const appointmentDate = new Date(date)
   const diffTime = appointmentDate - now
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  
+
   if (diffDays < 0) return 'Past appointment'
   if (diffDays === 0) return 'Today'
   if (diffDays === 1) return 'Tomorrow'
   if (diffDays < 7) return `In ${diffDays} days`
-  return `In ${Math.ceil(diffDays/7)} weeks`
+  return `In ${Math.ceil(diffDays / 7)} weeks`
 }
 
 // Add this function to handle opening the notes dialog
@@ -581,7 +591,7 @@ function openNotesDialog(appointment) {
 async function fetchPatientProfile() {
   try {
     const user = await getAuthUser()
-    
+
     const { data, error: profileError } = await supabase
       .from('profiles')
       .select('first_name, last_name')
@@ -589,7 +599,7 @@ async function fetchPatientProfile() {
       .single()
 
     if (profileError) throw profileError
-    
+
     patientProfile.value = data
   } catch (e) {
     console.error('Error fetching patient profile:', e)
@@ -598,11 +608,7 @@ async function fetchPatientProfile() {
 
 onMounted(async () => {
   try {
-    await Promise.all([
-      fetchPatientProfile(),
-      fetchDoctors(),
-      fetchMyAppointments()
-    ])
+    await Promise.all([fetchPatientProfile(), fetchDoctors(), fetchMyAppointments()])
   } catch (e) {
     error.value = e.message
     console.error('Error during initialization:', e)
@@ -614,39 +620,41 @@ onMounted(async () => {
   <AppLayout>
     <template #content>
       <v-container>
+        <!-- Header Section -->
         <v-row class="mb-6">
           <v-col cols="12" class="d-flex justify-space-between align-center">
             <div>
-              <h1 class="text-h4 mb-2">Hello, {{ patientProfile?.first_name || 'Patient' }}!</h1>
-              <div class="text-subtitle-1 text-grey">Welcome to your appointments dashboard</div>
+              <h1 class="text-h3 font-weight-bold mb-2" style="color: #667eea">
+                Hello, {{ patientProfile?.first_name || 'Patient' }}!
+              </h1>
+              <div class="text-subtitle-1" style="color: #9e9e9e">
+                Welcome to your appointments dashboard
+              </div>
             </div>
             <v-btn
               color="error"
               @click="handleLogout"
               :loading="loading"
               prepend-icon="mdi-logout"
+              variant="tonal"
+              class="logout-btn"
             >
               Logout
             </v-btn>
           </v-col>
         </v-row>
 
-        <v-alert
-          v-if="error"
-          type="error"
-          class="mb-4"
-          closable
-          @click:close="error = null"
-        >
+        <v-alert v-if="error" type="error" class="mb-4" closable @click:close="error = null">
           {{ error }}
         </v-alert>
 
         <!-- Doctor Selection -->
-        <v-card class="mb-6">
-          <v-card-title class="text-h5 pa-4">
+        <v-card class="mb-6 gradient-card" elevation="3">
+          <v-card-title class="text-h5 pa-4 card-header">
+            <v-icon icon="mdi-doctor" class="mr-2"></v-icon>
             Available Doctors
           </v-card-title>
-          
+
           <v-card-text>
             <v-row>
               <v-col cols="12">
@@ -658,7 +666,11 @@ onMounted(async () => {
                   label="Choose a Doctor"
                   @update:model-value="handleDoctorChange"
                   return-object
-                  :hint="selectedDoctor ? `${selectedDoctor.specialty} - ${selectedDoctor.availableSlots} slots available` : 'Select a doctor to view available appointments'"
+                  :hint="
+                    selectedDoctor
+                      ? `${selectedDoctor.specialty} - ${selectedDoctor.availableSlots} slots available`
+                      : 'Select a doctor to view available appointments'
+                  "
                   persistent-hint
                 >
                   <template v-slot:item="{ props, item }">
@@ -673,12 +685,7 @@ onMounted(async () => {
                       </template>
                       <template v-slot:subtitle>
                         <span>{{ item.raw.specialty }}</span>
-                        <v-chip
-                          class="ml-2"
-                          color="primary"
-                          size="x-small"
-                          label
-                        >
+                        <v-chip class="ml-2" color="primary" size="x-small" label>
                           {{ item.raw.availableSlots }} slots
                         </v-chip>
                       </template>
@@ -690,51 +697,52 @@ onMounted(async () => {
           </v-card-text>
         </v-card>
 
-        <v-alert
-          v-if="noAvailableDoctors"
-          type="info"
-          class="mb-6"
-        >
+        <v-alert v-if="noAvailableDoctors" type="info" class="mb-6">
           No doctors with available slots at the moment. Please check back later.
         </v-alert>
 
         <!-- Available Slots -->
-        <v-card class="mb-6" v-if="selectedDoctor">
-          <v-card-title class="text-h5 pa-4 d-flex align-center">
+        <v-card class="mb-6 gradient-card" elevation="3" v-if="selectedDoctor">
+          <v-card-title class="text-h5 pa-4 d-flex align-center card-header">
+            <v-icon icon="mdi-calendar-clock" class="mr-2"></v-icon>
             <span>Available Appointments with {{ selectedDoctor.fullName }}</span>
-            <v-chip class="ml-4" color="info" size="small">
+            <v-chip
+              class="ml-4"
+              style="background: rgba(255, 255, 255, 0.3); color: white"
+              size="small"
+            >
               {{ selectedDoctor.specialty }}
             </v-chip>
           </v-card-title>
-          
+
           <v-card-text>
             <v-data-table
               :headers="[
                 { title: 'Date', key: 'date', align: 'start' },
                 { title: 'Time', key: 'formattedTime', align: 'start' },
                 { title: 'Duration', key: 'duration', align: 'start' },
-                { title: 'Actions', key: 'actions', align: 'center' }
+                { title: 'Actions', key: 'actions', align: 'center' },
               ]"
               :items="availableSlots"
               :loading="loading"
               class="elevation-1"
             >
               <template v-slot:item.date="{ item }">
-                {{ new Date(item.date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                }) }}
+                {{
+                  new Date(item.date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })
+                }}
               </template>
 
-              <template v-slot:item.duration="{ item }">
-                {{ item.duration }} minutes
-              </template>
+              <template v-slot:item.duration="{ item }"> {{ item.duration }} minutes </template>
 
               <template v-slot:item.actions="{ item }">
                 <v-btn
-                  color="primary"
+                  class="bg-success"
                   size="small"
                   @click="bookAppointment(item)"
                   :loading="loading"
@@ -761,19 +769,15 @@ onMounted(async () => {
               Are you sure you want to {{ confirmDialogAction }} this appointment?
               <template v-if="confirmDialogItem">
                 <div class="mt-4">
-                  <strong>Date:</strong> {{ confirmDialogItem.formattedDate }}<br>
-                  <strong>Time:</strong> {{ confirmDialogItem.formattedTime }}<br>
+                  <strong>Date:</strong> {{ confirmDialogItem.formattedDate }}<br />
+                  <strong>Time:</strong> {{ confirmDialogItem.formattedTime }}<br />
                   <strong>Doctor:</strong> {{ confirmDialogItem.doctorName }}
                 </div>
               </template>
             </v-card-text>
             <v-card-actions>
               <v-spacer></v-spacer>
-              <v-btn
-                color="grey-darken-1"
-                variant="text"
-                @click="showConfirmDialog = false"
-              >
+              <v-btn color="grey-darken-1" variant="text" @click="showConfirmDialog = false">
                 Cancel
               </v-btn>
               <v-btn
@@ -789,9 +793,17 @@ onMounted(async () => {
         </v-dialog>
 
         <!-- Update the My Appointments card -->
-        <v-card>
-          <v-card-title class="text-h5 pa-4 d-flex align-center">
+        <v-card class="gradient-card" elevation="3">
+          <v-card-title class="text-h5 pa-4 d-flex align-center card-header">
+            <v-icon icon="mdi-calendar-check" class="mr-2"></v-icon>
             <span>My Appointments</span>
+            <v-chip
+              class="ml-4"
+              style="background: rgba(255, 255, 255, 0.3); color: white"
+              size="small"
+            >
+              {{ appointments.length }} Total
+            </v-chip>
             <v-spacer></v-spacer>
             <v-text-field
               v-model="searchQuery"
@@ -801,7 +813,9 @@ onMounted(async () => {
               hide-details
               density="compact"
               class="ml-4"
-              style="max-width: 200px"
+              style="max-width: 200px; background: rgba(255, 255, 255, 0.2); border-radius: 8px"
+              variant="solo-filled"
+              dark
             ></v-text-field>
             <v-select
               v-model="filterStatus"
@@ -809,16 +823,18 @@ onMounted(async () => {
                 { title: 'All', value: 'all' },
                 { title: 'Pending', value: 'pending' },
                 { title: 'Confirmed', value: 'confirmed' },
-                { title: 'Cancelled', value: 'cancelled' }
+                { title: 'Cancelled', value: 'cancelled' },
               ]"
               label="Status"
               density="compact"
               hide-details
               class="ml-4"
-              style="max-width: 150px"
+              style="max-width: 150px; background: rgba(255, 255, 255, 0.2); border-radius: 8px"
+              variant="solo-filled"
+              dark
             ></v-select>
           </v-card-title>
-          
+
           <v-card-text>
             <v-tabs v-model="tab">
               <v-tab value="active">Active Appointments</v-tab>
@@ -827,47 +843,47 @@ onMounted(async () => {
 
             <v-window v-model="tab">
               <v-window-item value="active">
-            <v-data-table
-              :headers="[
-                    { 
+                <v-data-table
+                  :headers="[
+                    {
                       title: 'Date & Time',
                       key: 'datetime',
                       align: 'start',
-                      sortable: true
+                      sortable: true,
                     },
-                    { 
+                    {
                       title: 'Doctor',
                       key: 'doctorName',
                       align: 'start',
-                      sortable: true
+                      sortable: true,
                     },
-                    { 
+                    {
                       title: 'Specialty',
                       key: 'specialty',
-                      align: 'start'
+                      align: 'start',
                     },
-                    { 
+                    {
                       title: 'Status',
                       key: 'status',
                       align: 'start',
-                      sortable: true
+                      sortable: true,
                     },
-                    { 
+                    {
                       title: 'When',
                       key: 'relative',
-                      align: 'start'
+                      align: 'start',
                     },
-                    { 
+                    {
                       title: 'Actions',
                       key: 'actions',
-                      align: 'center'
-                    }
+                      align: 'center',
+                    },
                   ]"
                   :items="activeAppointments"
-              :loading="loading"
+                  :loading="loading"
                   :items-per-page="itemsPerPage"
-              class="elevation-1"
-            >
+                  class="elevation-1"
+                >
                   <template v-slot:item.datetime="{ item }">
                     <div>{{ item.formattedDate }}</div>
                     <div class="text-caption">{{ item.formattedTime }}</div>
@@ -877,42 +893,36 @@ onMounted(async () => {
                     <div>{{ getRelativeTime(item.date) }}</div>
                   </template>
 
-              <template v-slot:item.status="{ item }">
+                  <template v-slot:item.status="{ item }">
                     <v-tooltip :text="getStatusTooltip(item.status)">
                       <template v-slot:activator="{ props }">
-                <v-chip
-                          v-bind="props"
-                          :color="getStatusColor(item.status)"
-                  size="small"
-                >
-                  {{ item.status }}
-                </v-chip>
+                        <v-chip v-bind="props" :color="getStatusColor(item.status)" size="small">
+                          {{ item.status }}
+                        </v-chip>
                       </template>
                     </v-tooltip>
-              </template>
+                  </template>
 
-              <template v-slot:item.actions="{ item }">
+                  <template v-slot:item.actions="{ item }">
                     <div class="d-flex gap-2">
                       <v-btn
                         v-if="item.notes"
-                        color="info"
+                        class="bg-info mr-2"
                         size="small"
-                        variant="tonal"
                         prepend-icon="mdi-note-text"
                         @click="openNotesDialog(item)"
-                        class="mr-2"
                       >
                         View Notes
                       </v-btn>
-                <v-btn
-                  v-if="item.status !== 'cancelled'"
-                  color="error"
-                  size="small"
+                      <v-btn
+                        v-if="item.status !== 'cancelled'"
+                        class="bg-error"
+                        size="small"
                         @click="handleCancelAppointment(item)"
                         :loading="loading"
-                >
-                  Cancel
-                </v-btn>
+                      >
+                        Cancel
+                      </v-btn>
                     </div>
                   </template>
                 </v-data-table>
@@ -921,38 +931,38 @@ onMounted(async () => {
               <v-window-item value="past">
                 <v-data-table
                   :headers="[
-                    { 
+                    {
                       title: 'Date & Time',
                       key: 'datetime',
                       align: 'start',
-                      sortable: true
+                      sortable: true,
                     },
-                    { 
+                    {
                       title: 'Doctor',
                       key: 'doctorName',
                       align: 'start',
-                      sortable: true
+                      sortable: true,
                     },
-                    { 
+                    {
                       title: 'Specialty',
                       key: 'specialty',
-                      align: 'start'
+                      align: 'start',
                     },
-                    { 
+                    {
                       title: 'Status',
                       key: 'status',
-                      align: 'start'
+                      align: 'start',
                     },
-                    { 
+                    {
                       title: 'Notes',
                       key: 'notes',
-                      align: 'start'
+                      align: 'start',
                     },
-                    { 
+                    {
                       title: 'Actions',
                       key: 'actions',
-                      align: 'center'
-                    }
+                      align: 'center',
+                    },
                   ]"
                   :items="pastAppointments"
                   :loading="loading"
@@ -967,11 +977,7 @@ onMounted(async () => {
                   <template v-slot:item.status="{ item }">
                     <v-tooltip :text="getStatusTooltip(item.status)">
                       <template v-slot:activator="{ props }">
-                        <v-chip
-                          v-bind="props"
-                          :color="getStatusColor(item.status)"
-                          size="small"
-                        >
+                        <v-chip v-bind="props" :color="getStatusColor(item.status)" size="small">
                           {{ item.status }}
                         </v-chip>
                       </template>
@@ -979,7 +985,7 @@ onMounted(async () => {
                   </template>
 
                   <template v-slot:item.notes="{ item }">
-                    <div v-if="item.notes" class="text-truncate" style="max-width: 200px;">
+                    <div v-if="item.notes" class="text-truncate" style="max-width: 200px">
                       <v-tooltip :text="item.notes">
                         <template v-slot:activator="{ props }">
                           <span v-bind="props" class="text-caption">
@@ -995,18 +1001,16 @@ onMounted(async () => {
                     <div class="d-flex gap-2">
                       <v-btn
                         v-if="item.notes"
-                        color="info"
+                        class="bg-info mr-2"
                         size="small"
-                        variant="tonal"
                         prepend-icon="mdi-note-text"
                         @click="openNotesDialog(item)"
-                        class="mr-2"
                       >
                         View Notes
                       </v-btn>
                       <v-btn
                         v-if="item.status === 'cancelled'"
-                        color="error"
+                        class="bg-error"
                         size="small"
                         variant="outlined"
                         @click="handleDeleteAppointment(item)"
@@ -1015,8 +1019,8 @@ onMounted(async () => {
                         Delete
                       </v-btn>
                     </div>
-              </template>
-            </v-data-table>
+                  </template>
+                </v-data-table>
               </v-window-item>
             </v-window>
           </v-card-text>
@@ -1029,7 +1033,7 @@ onMounted(async () => {
               <v-icon icon="mdi-note-text" class="mr-2" color="primary"></v-icon>
               Doctor's Notes
             </v-card-title>
-            
+
             <v-card-text>
               <div v-if="selectedAppointment" class="mb-4">
                 <div class="d-flex align-center mb-2">
@@ -1047,9 +1051,9 @@ onMounted(async () => {
                   <strong>Doctor:</strong>
                   <span class="ml-2">{{ selectedAppointment.doctorName }}</span>
                 </div>
-                
+
                 <v-divider class="mb-4"></v-divider>
-                
+
                 <div class="notes-content pa-4 bg-grey-lighten-4 rounded-lg">
                   <div class="d-flex align-center mb-2">
                     <v-icon icon="mdi-note-text" class="mr-2" color="primary"></v-icon>
@@ -1061,16 +1065,10 @@ onMounted(async () => {
                 </div>
               </div>
             </v-card-text>
-            
+
             <v-card-actions>
               <v-spacer></v-spacer>
-              <v-btn
-                color="primary"
-                variant="text"
-                @click="showNotesDialog = false"
-              >
-                Close
-              </v-btn>
+              <v-btn color="primary" variant="text" @click="showNotesDialog = false"> Close </v-btn>
             </v-card-actions>
           </v-card>
         </v-dialog>
@@ -1080,6 +1078,253 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/* Modern Gradient Color Palette */
+.gradient-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f5f7fa 100%);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gradient-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(102, 126, 234, 0.15) !important;
+}
+
+.card-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  border-radius: 0 !important;
+  letter-spacing: 0.5px;
+}
+
+.card-header .v-icon {
+  color: white !important;
+}
+
+/* Header Gradient */
+.text-h3 {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+/* Logout Button */
+.logout-btn {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+  color: white !important;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(245, 87, 108, 0.3) !important;
+}
+
+/* Table Header Gradient */
+.v-data-table :deep(thead) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.v-data-table :deep(thead th) {
+  color: white !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  letter-spacing: 0.5px !important;
+  border: none !important;
+}
+
+.v-data-table :deep(tbody tr:hover) {
+  background: linear-gradient(
+    90deg,
+    rgba(102, 126, 234, 0.05) 0%,
+    rgba(118, 75, 162, 0.05) 100%
+  ) !important;
+}
+
+/* Status Chips with Gradients */
+.v-chip.text-pending {
+  background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%) !important;
+  color: white !important;
+  font-weight: 600;
+}
+
+.v-chip.text-confirmed {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+  color: white !important;
+  font-weight: 600;
+}
+
+.v-chip.text-cancelled {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+  color: white !important;
+  font-weight: 600;
+}
+
+/* Doctor Cards */
+.doctor-card {
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ffffff 0%, #f5f7fa 100%);
+}
+
+.doctor-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 24px rgba(102, 126, 234, 0.2) !important;
+}
+
+.selected-doctor {
+  border: 3px solid;
+  border-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%) 1;
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.25) !important;
+}
+
+/* Action Buttons */
+.v-btn.bg-success {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+  color: white !important;
+  font-weight: 600;
+  border-radius: 8px;
+  text-transform: none;
+  letter-spacing: 0.5px;
+}
+
+.v-btn.bg-error {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+  color: white !important;
+  font-weight: 600;
+  border-radius: 8px;
+  text-transform: none;
+  letter-spacing: 0.5px;
+}
+
+.v-btn.bg-info {
+  background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%) !important;
+  color: white !important;
+  font-weight: 600;
+  border-radius: 8px;
+  text-transform: none;
+  letter-spacing: 0.5px;
+}
+
+/* Notes Dialog */
+.v-dialog .v-card {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.v-dialog .card-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.notes-content {
+  border-left: 4px solid #667eea;
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+  padding: 16px;
+  border-radius: 0 8px 8px 0;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 600px) {
+  .text-h3 {
+    font-size: 1.75rem !important;
+  }
+
+  .card-header {
+    font-size: 1.1rem !important;
+    padding: 12px 16px !important;
+  }
+
+  .v-card-title {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .v-card-title .v-text-field,
+  .v-card-title .v-select {
+    max-width: 100%;
+    margin-left: 0;
+    margin-top: 8px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .action-buttons .v-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 960px) {
+  .v-col {
+    padding: 8px;
+  }
+
+  .controls-wrapper {
+    flex-direction: column;
+  }
+
+  .search-field,
+  .filter-select {
+    width: 100%;
+  }
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gradient-card {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+/* Utility Classes */
+.v-container {
+  max-width: 100%;
+  padding: 16px;
+}
+
+.v-data-table {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.gap-2 {
+  gap: 8px;
+}
+
+.d-flex.gap-2 {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 .v-card {
   margin-bottom: 20px;
 }
@@ -1292,11 +1537,11 @@ onMounted(async () => {
   .text-h4 {
     font-size: 1.5rem !important;
   }
-  
+
   .text-h5 {
     font-size: 1.25rem !important;
   }
-  
+
   .text-subtitle-1 {
     font-size: 0.875rem !important;
   }
@@ -1416,7 +1661,7 @@ onMounted(async () => {
 /* Dark Mode Support */
 @media (prefers-color-scheme: dark) {
   .v-card {
-    background-color: #1E1E1E;
+    background-color: #1e1e1e;
   }
 
   .text-medium-emphasis {
@@ -1434,4 +1679,4 @@ onMounted(async () => {
     transform: none !important;
   }
 }
-</style> 
+</style>
