@@ -25,6 +25,8 @@ const tab = ref('active')
 const showNotesDialog = ref(false)
 const selectedAppointment = ref(null)
 const patientProfile = ref(null)
+const showBookingConfirmDialog = ref(false)
+const selectedSlotForBooking = ref(null)
 
 // Helper function to format time
 function formatTime(time) {
@@ -269,7 +271,13 @@ async function fetchMyAppointments() {
 }
 
 // Book an appointment
-async function bookAppointment(slot) {
+function openBookingConfirmDialog(slot) {
+  selectedSlotForBooking.value = slot
+  showBookingConfirmDialog.value = true
+}
+
+async function confirmBooking() {
+  const slot = selectedSlotForBooking.value
   if (!slot?.id) return
 
   try {
@@ -327,7 +335,9 @@ async function bookAppointment(slot) {
     // Refresh data
     await Promise.all([fetchAvailableSlots(selectedDoctor.value), fetchMyAppointments()])
 
-    // Show success message
+    // Close dialog and reset
+    showBookingConfirmDialog.value = false
+    selectedSlotForBooking.value = null
     error.value = null
   } catch (e) {
     error.value = e.message
@@ -744,7 +754,7 @@ onMounted(async () => {
                 <v-btn
                   class="bg-success"
                   size="small"
-                  @click="bookAppointment(item)"
+                  @click="openBookingConfirmDialog(item)"
                   :loading="loading"
                 >
                   Book Appointment
@@ -802,7 +812,7 @@ onMounted(async () => {
               style="background: rgba(255, 255, 255, 0.3); color: white"
               size="small"
             >
-              {{ appointments.length }} Total
+              {{ myAppointments.length }} Total
             </v-chip>
             <v-spacer></v-spacer>
             <v-text-field
@@ -1025,6 +1035,105 @@ onMounted(async () => {
             </v-window>
           </v-card-text>
         </v-card>
+
+        <!-- Booking Confirmation Dialog -->
+        <v-dialog v-model="showBookingConfirmDialog" max-width="500">
+          <v-card class="gradient-card" elevation="3">
+            <v-card-title class="text-h5 pa-4 card-header">
+              <v-icon icon="mdi-calendar-check" class="mr-2"></v-icon>
+              Confirm Appointment Booking
+            </v-card-title>
+
+            <v-card-text class="pa-6" v-if="selectedSlotForBooking">
+              <div class="text-body-1 mb-4">Are you sure you want to book this appointment?</div>
+
+              <div
+                class="booking-details pa-4 rounded-lg"
+                style="
+                  background: linear-gradient(
+                    135deg,
+                    rgba(102, 126, 234, 0.1) 0%,
+                    rgba(118, 75, 162, 0.1) 100%
+                  );
+                  border: 2px solid rgba(102, 126, 234, 0.2);
+                "
+              >
+                <div class="d-flex align-center mb-3">
+                  <v-icon icon="mdi-doctor" class="mr-3" color="#667eea" size="small"></v-icon>
+                  <div>
+                    <div class="text-caption text-grey-darken-1">Doctor</div>
+                    <div class="text-subtitle-1 font-weight-medium">
+                      {{ selectedDoctor?.fullName }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="d-flex align-center mb-3">
+                  <v-icon icon="mdi-calendar" class="mr-3" color="#667eea" size="small"></v-icon>
+                  <div>
+                    <div class="text-caption text-grey-darken-1">Date</div>
+                    <div class="text-subtitle-1 font-weight-medium">
+                      {{ formatDate(selectedSlotForBooking.date) }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="d-flex align-center mb-3">
+                  <v-icon
+                    icon="mdi-clock-outline"
+                    class="mr-3"
+                    color="#667eea"
+                    size="small"
+                  ></v-icon>
+                  <div>
+                    <div class="text-caption text-grey-darken-1">Time</div>
+                    <div class="text-subtitle-1 font-weight-medium">
+                      {{ formatTime(selectedSlotForBooking.time) }}
+                    </div>
+                  </div>
+                </div>
+
+                <div class="d-flex align-center">
+                  <v-icon
+                    icon="mdi-timer-outline"
+                    class="mr-3"
+                    color="#667eea"
+                    size="small"
+                  ></v-icon>
+                  <div>
+                    <div class="text-caption text-grey-darken-1">Duration</div>
+                    <div class="text-subtitle-1 font-weight-medium">
+                      {{ selectedSlotForBooking.duration }} minutes
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <v-alert type="info" variant="tonal" class="mt-4" density="compact">
+                <div class="text-caption">
+                  <v-icon icon="mdi-information" size="small" class="mr-1"></v-icon>
+                  Your appointment will be marked as <strong>Pending</strong> until confirmed by the
+                  doctor.
+                </div>
+              </v-alert>
+            </v-card-text>
+
+            <v-card-actions class="pa-4">
+              <v-spacer></v-spacer>
+              <v-btn variant="text" @click="showBookingConfirmDialog = false" :disabled="loading">
+                Cancel
+              </v-btn>
+              <v-btn
+                class="bg-success"
+                @click="confirmBooking"
+                :loading="loading"
+                prepend-icon="mdi-check"
+              >
+                Confirm Booking
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
 
         <!-- Doctor's Notes Dialog -->
         <v-dialog v-model="showNotesDialog" max-width="500">
