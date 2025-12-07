@@ -25,6 +25,8 @@ const actionDialogType = ref(null) // 'cancel' or 'delete'
 const selectedSlot = ref(null)
 const cancellationNotes = ref('')
 const doctorProfile = ref(null)
+const showSlotConfirmDialog = ref(false)
+const pendingSlot = ref(null)
 
 // Time slots in 24-hour format with AM/PM
 const timeSlots = [
@@ -209,8 +211,19 @@ async function fetchAppointments() {
   }
 }
 
-async function addTimeSlot() {
+function openSlotConfirmDialog() {
   if (!newSlot.value.date || !newSlot.value.time) {
+    error.value = 'Please select both date and time'
+    return
+  }
+  
+  // Store pending slot data
+  pendingSlot.value = { ...newSlot.value }
+  showSlotConfirmDialog.value = true
+}
+
+async function confirmAddTimeSlot() {
+  if (!pendingSlot.value.date || !pendingSlot.value.time) {
     error.value = 'Please select both date and time'
     return
   }
@@ -220,7 +233,7 @@ async function addTimeSlot() {
     const user = await getAuthUser()
 
     // Validate the date
-    const slotDate = new Date(newSlot.value.date)
+    const slotDate = new Date(pendingSlot.value.date)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
@@ -230,13 +243,13 @@ async function addTimeSlot() {
 
     // Get the time value from the selected time object
     const timeValue =
-      typeof newSlot.value.time === 'object' ? newSlot.value.time.value : newSlot.value.time
+      typeof pendingSlot.value.time === 'object' ? pendingSlot.value.time.value : pendingSlot.value.time
 
     // Check for existing slot
     const { data: existingSlot } = await supabase
       .from('available_slots')
       .select('id')
-      .eq('date', newSlot.value.date)
+      .eq('date', pendingSlot.value.date)
       .eq('time', timeValue)
       .eq('doctor_id', user.id)
       .maybeSingle()
@@ -248,10 +261,10 @@ async function addTimeSlot() {
     // Add new slot
     const { error: insertError } = await supabase.from('available_slots').insert({
       doctor_id: user.id,
-      date: newSlot.value.date,
+      date: pendingSlot.value.date,
       time: timeValue,
-      duration: newSlot.value.duration || 30,
-      notes: newSlot.value.notes?.trim() || '',
+      duration: pendingSlot.value.duration || 30,
+      notes: pendingSlot.value.notes?.trim() || '',
       is_booked: false,
     })
 
@@ -264,6 +277,10 @@ async function addTimeSlot() {
       duration: 30,
       notes: '',
     }
+
+    // Close dialog and clear pending slot
+    showSlotConfirmDialog.value = false
+    pendingSlot.value = null
 
     // Refresh data
     await fetchMySlots()
@@ -822,7 +839,7 @@ onMounted(async () => {
                   color="primary"
                   :loading="loading"
                   :disabled="!newSlot.date || !newSlot.time"
-                  @click="addTimeSlot"
+                  @click="openSlotConfirmDialog"
                   block
                   size="large"
                   prepend-icon="mdi-plus"
@@ -1022,43 +1039,123 @@ onMounted(async () => {
           </v-card-text>
         </v-card>
 
+        <!-- Slot Confirmation Dialog -->
+        <v-dialog v-model="showSlotConfirmDialog" max-width="500">
+          <v-card class="gradient-card" elevation="3">
+            <v-card-title class="text-h5 pa-4 card-header">
+              <v-icon icon="mdi-calendar-plus" class="mr-2"></v-icon>
+              Confirm Time Slot
+            </v-card-title>
+
+            <v-card-text class="pa-6" v-if="pendingSlot">
+              <div class="text-body-1 mb-4">
+                Are you sure you want to add this time slot?
+              </div>
+
+              <div class="slot-details pa-4 rounded-lg" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border: 2px solid rgba(102, 126, 234, 0.2);">
+                <div class="d-flex align-center mb-3">
+                  <v-icon icon="mdi-calendar" class="mr-3" color="#667eea" size="small"></v-icon>
+                  <div>
+                    <div class="text-caption text-grey-darken-1">Date</div>
+                    <div class="text-subtitle-1 font-weight-medium">{{ formatDate(pendingSlot.date) }}</div>
+                  </div>
+                </div>
+
+                <div class="d-flex align-center mb-3">
+                  <v-icon icon="mdi-clock-outline" class="mr-3" color="#667eea" size="small"></v-icon>
+                  <div>
+                    <div class="text-caption text-grey-darken-1">Time</div>
+                    <div class="text-subtitle-1 font-weight-medium">{{ formatTime(typeof pendingSlot.time === 'object' ? pendingSlot.time.value : pendingSlot.time) }}</div>
+                  </div>
+                </div>
+
+                <div class="d-flex align-center mb-3">
+                  <v-icon icon="mdi-timer-outline" class="mr-3" color="#667eea" size="small"></v-icon>
+                  <div>
+                    <div class="text-caption text-grey-darken-1">Duration</div>
+                    <div class="text-subtitle-1 font-weight-medium">{{ pendingSlot.duration }} minutes</div>
+                  </div>
+                </div>
+
+                <div v-if="pendingSlot.notes" class="d-flex align-center">
+                  <v-icon icon="mdi-note-text" class="mr-3" color="#667eea" size="small"></v-icon>
+                  <div>
+                    <div class="text-caption text-grey-darken-1">Notes</div>
+                    <div class="text-subtitle-1 font-weight-medium">{{ pendingSlot.notes }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <v-alert type="info" variant="tonal" class="mt-4" density="compact">
+                <div class="text-caption">
+                  <v-icon icon="mdi-information" size="small" class="mr-1"></v-icon>
+                  This slot will be available for patients to book appointments.
+                </div>
+              </v-alert>
+            </v-card-text>
+
+            <v-card-actions class="pa-4">
+              <v-spacer></v-spacer>
+              <v-btn
+                variant="text"
+                @click="showSlotConfirmDialog = false"
+                :disabled="loading"
+              >
+                Cancel
+              </v-btn>
+              <v-btn
+                color="primary"
+                @click="confirmAddTimeSlot"
+                :loading="loading"
+                prepend-icon="mdi-check"
+              >
+                Confirm & Add Slot
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
         <!-- Notes Dialog -->
         <v-dialog v-model="showNotesDialog" max-width="500">
-          <v-card>
-            <v-card-title class="text-h5 pa-4">
-              <v-icon icon="mdi-note-text" class="mr-2" color="primary"></v-icon>
+          <v-card class="gradient-card" elevation="3">
+            <v-card-title class="text-h5 pa-4 card-header">
+              <v-icon icon="mdi-note-text" class="mr-2"></v-icon>
               Add Confirmation Notes
             </v-card-title>
 
-            <v-card-text>
+            <v-card-text class="pa-6">
               <v-textarea
                 v-model="doctorNotes"
                 label="Notes for Patient"
                 rows="4"
                 variant="outlined"
                 placeholder="Add any special instructions or notes for the patient"
-                class="mb-2"
+                class="mb-4"
               ></v-textarea>
 
-              <v-alert type="info" variant="tonal" class="mb-0">
-                These notes will be visible to the patient after confirmation.
+              <v-alert type="info" variant="tonal">
+                <div class="text-caption">
+                  <v-icon icon="mdi-information" size="small" class="mr-1"></v-icon>
+                  These notes will be visible to the patient after confirmation. The patient will be notified of the confirmation.
+                </div>
               </v-alert>
             </v-card-text>
 
-            <v-card-actions>
+            <v-card-actions class="pa-4">
               <v-spacer></v-spacer>
               <v-btn color="grey-darken-1" variant="text" @click="showNotesDialog = false">
                 Cancel
               </v-btn>
               <v-btn
                 color="success"
-                variant="tonal"
+                variant="elevated"
                 @click="
                   () => {
                     updateAppointmentStatus(selectedAppointment, 'confirmed')
                   }
                 "
                 :loading="loading"
+                prepend-icon="mdi-check-circle"
               >
                 Confirm Appointment
               </v-btn>
@@ -1068,35 +1165,34 @@ onMounted(async () => {
 
         <!-- Action Confirmation Dialog -->
         <v-dialog v-model="showActionDialog" max-width="500">
-          <v-card>
-            <v-card-title class="text-h5 pa-4">
+          <v-card class="gradient-card" elevation="3">
+            <v-card-title class="text-h5 pa-4 card-header">
               <v-icon
                 :icon="actionDialogType === 'delete' ? 'mdi-delete-alert' : 'mdi-cancel'"
                 class="mr-2"
-                :color="actionDialogType === 'delete' ? 'error' : 'warning'"
               ></v-icon>
               Confirm {{ actionDialogType === 'delete' ? 'Delete' : 'Cancel' }}
             </v-card-title>
 
-            <v-card-text>
+            <v-card-text class="pa-6">
               <p class="text-body-1">
                 Are you sure you want to {{ actionDialogType === 'delete' ? 'delete' : 'cancel' }}
                 this time slot?
               </p>
 
-              <div v-if="selectedSlot" class="mt-4 pa-4 bg-grey-lighten-4 rounded-lg">
+              <div v-if="selectedSlot" class="mt-4 pa-4 rounded-lg" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border: 2px solid rgba(102, 126, 234, 0.2);">
                 <div class="d-flex align-center mb-2">
-                  <v-icon icon="mdi-calendar" class="mr-2" color="primary"></v-icon>
+                  <v-icon icon="mdi-calendar" class="mr-2" color="#667eea"></v-icon>
                   <strong>Date:</strong>
                   <span class="ml-2">{{ selectedSlot.formattedDate }}</span>
                 </div>
                 <div class="d-flex align-center mb-2">
-                  <v-icon icon="mdi-clock" class="mr-2" color="primary"></v-icon>
+                  <v-icon icon="mdi-clock" class="mr-2" color="#667eea"></v-icon>
                   <strong>Time:</strong>
                   <span class="ml-2">{{ selectedSlot.formattedTime }}</span>
                 </div>
                 <div v-if="selectedSlot.patientName" class="d-flex align-center">
-                  <v-icon icon="mdi-account" class="mr-2" color="primary"></v-icon>
+                  <v-icon icon="mdi-account" class="mr-2" color="#667eea"></v-icon>
                   <strong>Patient:</strong>
                   <span class="ml-2">{{ selectedSlot.patientName }}</span>
                 </div>
@@ -1104,7 +1200,7 @@ onMounted(async () => {
 
               <!-- Add notes input for cancellation -->
               <v-textarea
-                v-if="actionDialogType === 'cancel' && selectedSlot.is_booked"
+                v-if="actionDialogType === 'cancel' && selectedSlot && selectedSlot.is_booked"
                 v-model="cancellationNotes"
                 label="Cancellation Notes"
                 placeholder="Add a note explaining the cancellation (optional)"
@@ -1123,16 +1219,24 @@ onMounted(async () => {
                 This action cannot be undone. Any cancelled appointments for this slot will also be
                 deleted.
               </v-alert>
+              <v-alert
+                v-else-if="actionDialogType === 'cancel' && selectedSlot && selectedSlot.is_booked"
+                type="info"
+                variant="tonal"
+                class="mt-4"
+              >
+                The patient will be notified about the cancellation.
+              </v-alert>
             </v-card-text>
 
-            <v-card-actions>
+            <v-card-actions class="pa-4">
               <v-spacer></v-spacer>
               <v-btn color="grey-darken-1" variant="text" @click="showActionDialog = false">
                 Cancel
               </v-btn>
               <v-btn
                 :color="actionDialogType === 'delete' ? 'error' : 'warning'"
-                variant="tonal"
+                variant="elevated"
                 @click="handleActionConfirm"
                 :loading="loading"
               >
@@ -1237,6 +1341,22 @@ onMounted(async () => {
   justify-content: center;
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
+}
+
+/* Gradient Card for Dialogs */
+.gradient-card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.gradient-card .card-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white !important;
+}
+
+.gradient-card .card-header .v-icon {
+  color: white !important;
 }
 
 /* Main Cards */
