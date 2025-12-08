@@ -12,7 +12,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true,
     autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    storageKey: 'supabase.auth.token', // Custom storage key
+    storage: localStorage, // Consider using more secure storage
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'vue-app',
+    },
   },
 })

@@ -216,7 +216,7 @@ function openSlotConfirmDialog() {
     error.value = 'Please select both date and time'
     return
   }
-  
+
   // Store pending slot data
   pendingSlot.value = { ...newSlot.value }
   showSlotConfirmDialog.value = true
@@ -243,7 +243,9 @@ async function confirmAddTimeSlot() {
 
     // Get the time value from the selected time object
     const timeValue =
-      typeof pendingSlot.value.time === 'object' ? pendingSlot.value.time.value : pendingSlot.value.time
+      typeof pendingSlot.value.time === 'object'
+        ? pendingSlot.value.time.value
+        : pendingSlot.value.time
 
     // Check for existing slot
     const { data: existingSlot } = await supabase
@@ -1048,32 +1050,62 @@ onMounted(async () => {
             </v-card-title>
 
             <v-card-text class="pa-6" v-if="pendingSlot">
-              <div class="text-body-1 mb-4">
-                Are you sure you want to add this time slot?
-              </div>
+              <div class="text-body-1 mb-4">Are you sure you want to add this time slot?</div>
 
-              <div class="slot-details pa-4 rounded-lg" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border: 2px solid rgba(102, 126, 234, 0.2);">
+              <div
+                class="slot-details pa-4 rounded-lg"
+                style="
+                  background: linear-gradient(
+                    135deg,
+                    rgba(102, 126, 234, 0.1) 0%,
+                    rgba(118, 75, 162, 0.1) 100%
+                  );
+                  border: 2px solid rgba(102, 126, 234, 0.2);
+                "
+              >
                 <div class="d-flex align-center mb-3">
                   <v-icon icon="mdi-calendar" class="mr-3" color="#667eea" size="small"></v-icon>
                   <div>
                     <div class="text-caption text-grey-darken-1">Date</div>
-                    <div class="text-subtitle-1 font-weight-medium">{{ formatDate(pendingSlot.date) }}</div>
+                    <div class="text-subtitle-1 font-weight-medium">
+                      {{ formatDate(pendingSlot.date) }}
+                    </div>
                   </div>
                 </div>
 
                 <div class="d-flex align-center mb-3">
-                  <v-icon icon="mdi-clock-outline" class="mr-3" color="#667eea" size="small"></v-icon>
+                  <v-icon
+                    icon="mdi-clock-outline"
+                    class="mr-3"
+                    color="#667eea"
+                    size="small"
+                  ></v-icon>
                   <div>
                     <div class="text-caption text-grey-darken-1">Time</div>
-                    <div class="text-subtitle-1 font-weight-medium">{{ formatTime(typeof pendingSlot.time === 'object' ? pendingSlot.time.value : pendingSlot.time) }}</div>
+                    <div class="text-subtitle-1 font-weight-medium">
+                      {{
+                        formatTime(
+                          typeof pendingSlot.time === 'object'
+                            ? pendingSlot.time.value
+                            : pendingSlot.time,
+                        )
+                      }}
+                    </div>
                   </div>
                 </div>
 
                 <div class="d-flex align-center mb-3">
-                  <v-icon icon="mdi-timer-outline" class="mr-3" color="#667eea" size="small"></v-icon>
+                  <v-icon
+                    icon="mdi-timer-outline"
+                    class="mr-3"
+                    color="#667eea"
+                    size="small"
+                  ></v-icon>
                   <div>
                     <div class="text-caption text-grey-darken-1">Duration</div>
-                    <div class="text-subtitle-1 font-weight-medium">{{ pendingSlot.duration }} minutes</div>
+                    <div class="text-subtitle-1 font-weight-medium">
+                      {{ pendingSlot.duration }} minutes
+                    </div>
                   </div>
                 </div>
 
@@ -1096,11 +1128,7 @@ onMounted(async () => {
 
             <v-card-actions class="pa-4">
               <v-spacer></v-spacer>
-              <v-btn
-                variant="text"
-                @click="showSlotConfirmDialog = false"
-                :disabled="loading"
-              >
+              <v-btn variant="text" @click="showSlotConfirmDialog = false" :disabled="loading">
                 Cancel
               </v-btn>
               <v-btn
@@ -1136,7 +1164,8 @@ onMounted(async () => {
               <v-alert type="info" variant="tonal">
                 <div class="text-caption">
                   <v-icon icon="mdi-information" size="small" class="mr-1"></v-icon>
-                  These notes will be visible to the patient after confirmation. The patient will be notified of the confirmation.
+                  These notes will be visible to the patient after confirmation. The patient will be
+                  notified of the confirmation.
                 </div>
               </v-alert>
             </v-card-text>
@@ -1180,7 +1209,18 @@ onMounted(async () => {
                 this time slot?
               </p>
 
-              <div v-if="selectedSlot" class="mt-4 pa-4 rounded-lg" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border: 2px solid rgba(102, 126, 234, 0.2);">
+              <div
+                v-if="selectedSlot"
+                class="mt-4 pa-4 rounded-lg"
+                style="
+                  background: linear-gradient(
+                    135deg,
+                    rgba(102, 126, 234, 0.1) 0%,
+                    rgba(118, 75, 162, 0.1) 100%
+                  );
+                  border: 2px solid rgba(102, 126, 234, 0.2);
+                "
+              >
                 <div class="d-flex align-center mb-2">
                   <v-icon icon="mdi-calendar" class="mr-2" color="#667eea"></v-icon>
                   <strong>Date:</strong>

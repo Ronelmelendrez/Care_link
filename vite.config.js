@@ -1,25 +1,32 @@
-import { fileURLToPath, URL } from 'node:url'
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
-
-// https://vite.dev/config/
-export default defineConfig({
-  plugins: [vue(), vueDevTools()],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
+module.exports = {
+  devServer: {
+    headers: {
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'X-XSS-Protection': '1; mode=block',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
     },
   },
-  base: '/', // Ensure the correct base URL for assets
 
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['vue', 'vuetify'], // Optimize chunking by creating a separate chunk for vendor libraries
+  // Production build optimizations
+  configureWebpack: {
+    devtool: 'source-map', // Safer than eval for production
+  },
+
+  // Security-focused CSP (Content Security Policy)
+  // Note: For Vercel, these headers should be in vercel.json instead
+  // This is for development only
+  chainWebpack: (config) => {
+    config.plugin('html').tap((args) => {
+      args[0].meta = [
+        ...(args[0].meta || []),
+        {
+          'http-equiv': 'Content-Security-Policy',
+          content:
+            "default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' https://*.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co",
         },
-      },
-    },
+      ]
+      return args
+    })
   },
-})
+}
